@@ -21,7 +21,7 @@ repository = "https://gitea.gioser.net/sergio/pata"
 [workspace.dependencies]
 
 # === Registro de apps / menú global ===
-app-bus = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+app-bus = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # === Serialización ===
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -159,78 +159,78 @@ taffy = "0.9"
 # parley = shaping completo (bidi, ligatures, fallback CJK/emoji vía fontique, line break).
 parley = "0.4"
 # Bucle Elm (input→update→view→layout→raster→present). Lo consumen las apps.
-llimphi-ui = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-ui = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Paleta semántica compartida por las apps y los widgets.
-llimphi-theme = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-theme = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Tweens y helpers de animación sobre el bucle Elm.
-llimphi-motion = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-motion = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Iconos vectoriales (BezPath en grid 24×24) compartidos por todas las apps.
-llimphi-icons = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-icons = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Widgets reusables sobre llimphi-ui — uno por crate.
-llimphi-widget-app-header = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-banner = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-button = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-clipboard = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-context-menu = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-edit-menu = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-menubar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-list = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-grid = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-slider = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-scroll = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-splitter = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-stat-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-tabs = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-command-palette = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-diff-viewer = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-fif = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-file-picker = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-bookmarks = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-mini-map = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-shuma-term = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-module-symbol-outline = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-plugin-host = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-theme-switcher = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-text-area = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-text-editor-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-text-editor = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-text-editor-lsp = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-text-input = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-tiled = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-nodegraph = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-tree = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-navigator = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-app-header = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-banner = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-button = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-card = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-clipboard = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-context-menu = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-edit-menu = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-menubar = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-list = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-grid = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-slider = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-scroll = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-splitter = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-stat-card = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-tabs = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-command-palette = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-diff-viewer = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-fif = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-file-picker = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-bookmarks = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-mini-map = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-shuma-term = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-module-symbol-outline = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-plugin-host = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-theme-switcher = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-text-area = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-text-editor-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-text-editor = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-text-editor-lsp = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-text-input = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-tiled = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-nodegraph = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-tree = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-navigator = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Sello vectorial wawa (rombo + W implícita + Merkle Core).
-llimphi-widget-wawa-mark = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-wawa-mark = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Widgets de elegancia transversal (tooltip, spinner, progress, toast,
 # modal, empty, status-bar, shortcuts-help, splash).
-llimphi-widget-tooltip = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-spinner = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-progress = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-toast = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-modal = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-empty = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-status-bar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-shortcuts-help = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-timeline = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-splash = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-tooltip = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-spinner = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-progress = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-toast = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-modal = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-empty = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-status-bar = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-shortcuts-help = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-timeline = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-splash = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Controles de formulario y signaling (switch, segmented, breadcrumb,
 # badge, avatar, skeleton, field).
-llimphi-widget-switch = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-segmented = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-dock-rail = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-breadcrumb = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-badge = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-avatar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-skeleton = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-field = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-switch = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-segmented = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-dock-rail = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-breadcrumb = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-badge = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-avatar = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-skeleton = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-field = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Firma visual transversal (gradient sutil + hairline accent).
-llimphi-widget-panel = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-widget-panes = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-llimphi-workspace = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-panel = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-widget-panes = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+llimphi-workspace = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 # Abstracción Selector — host (paths) + wawa (khipus).
-llimphi-module-selector = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-selector = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 
 # === Filesystem helpers ===
 directories = "5"
@@ -289,61 +289,61 @@ ttf-parser = "0.25"
 # ============================================================
 # Intra-workspace deps de nahual (referenciadas por workspace = true)
 # ============================================================
-nahual-text-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-image-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-thumb-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-gallery-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-video-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-card-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-audio-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-tree-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-hex-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-table-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-markdown-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-archive-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-font-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-map-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-geo-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-viewer-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-nahual-file-explorer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-text-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-image-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-thumb-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-gallery-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-video-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-card-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-audio-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-tree-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-hex-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-table-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-markdown-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-archive-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-font-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-map-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-geo-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-viewer-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+nahual-file-explorer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 
 # ============================================================
 # Intra-workspace deps de pineal (módulo de gráficos)
 # ============================================================
-pineal-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-render = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-cartesian = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-stream = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-mesh = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-financial = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-polar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-heatmap = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-treemap = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-flow = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-phosphor = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-export = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-hexbin = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-contour = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal-bars = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pineal = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-render = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-cartesian = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-stream = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-mesh = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-financial = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-polar = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-heatmap = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-treemap = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-flow = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-phosphor = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-export = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-hexbin = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-contour = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal-bars = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pineal = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 
 # ============================================================
 # Intra-workspace deps de iniy (laboratorio semántico de creencias)
 # ============================================================
-iniy-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-ingest = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-extract = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-nli = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-nli-llm = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-graph = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-iniy-store = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-ingest = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-extract = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-nli = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-nli-llm = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-graph = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+iniy-store = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 
 # === auto: declarados por crates internos faltantes ===
-cosmos-coords = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-cosmos-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-cosmos-ephemeris = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-cosmos-time = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-cosmos-wcs = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+cosmos-coords = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+cosmos-core = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+cosmos-ephemeris = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+cosmos-time = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+cosmos-wcs = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
 
 # === auto: externas de eternal ===
 celestial-eop-data = { version = "0.1"}
@@ -432,8 +432,8 @@ opus-wave = "3"
 # y media-source-opus — un .webm AV1+Opus se reproduce 100% nativo.
 matroska-demuxer = "0.7"
 # === git-deps al monorepo (agregados por la extracción) ===
-card-sidecar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-chasqui-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-pluma-llm = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-shuma-exec = { git = "https://gitea.gioser.net/sergio/gioser.git" }
-shuma-line = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+card-sidecar = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+chasqui-card = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+pluma-llm = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+shuma-exec = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
+shuma-line = { git = "https://gitea.gioser.net/sergio/gioser.git", tag = "v0.1.0" }
