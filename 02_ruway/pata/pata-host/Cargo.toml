@@ -1,0 +1,12 @@
+[package]
+name = "pata-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "pata-host — protocolo del rail hospedado: una app le presta sus dientes (sidebar) al marco pata cuando tiene foco, y recibe de vuelta qué diente se activó. Socket Unix dedicado + marco postcard con prefijo de longitud. Lado app (HostClient) + lado shell (HostServer)."
+
+[dependencies]
+serde = { workspace = true }
+postcard = { workspace = true }

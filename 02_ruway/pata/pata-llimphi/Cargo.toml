@@ -1,0 +1,73 @@
+[package]
+name = "pata-llimphi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "pata — el frontend Linux: monta el modelo de pata-core sobre Llimphi. Resuelve la geometría de las superficies (barras/paneles/dock) y pinta cada widget traduciendo su view-model agnóstico al backend gráfico. Muestrea el sistema (reloj, CPU, RAM, volumen, brillo) en un WidgetCtx que alimenta a los widgets. Corre sobre el compositor mirada."
+
+[[bin]]
+name = "pata-llimphi"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+pata-core = { path = "../pata-core" }
+pata-config = { path = "../pata-config" }
+# Rail hospedado (sidebar delegado): pata hospeda los dientes de la app enfocada
+# y le reenvía las activaciones. Lado servidor del protocolo.
+pata-host = { path = "../pata-host" }
+# El puente pata→shuma (SDD §5): el marco provee el borde, shuma la ejecución.
+# El drawer Quake corre los comandos por el ejecutor real de shuma (captura
+# acotada, streaming) en vez de un `sh -c` pelado.
+shuma-exec = { workspace = true }
+# El cerebro de la línea de shuma (agnóstico de GUI): descompone el comando en
+# etapas de pipe para las chips clickeables del drawer.
+shuma-line = { workspace = true }
+# IA en el drawer Quake: el submit sin prefijo `!`/`$` va al LLM (fachada
+# transparente de pluma; cae a Mock sin credenciales). Paridad con el quake de
+# mirada-launcher, que pata reemplaza (SDD Fase 10).
+pluma-llm = { workspace = true }
+# Registro de apps para el menú del botón de inicio (descubre ~/.config/gioser/
+# apps/*.toml). El menú nativo reemplaza a depender de wofi/rofi externos.
+app-bus = { workspace = true }
+llimphi-ui = { workspace = true }
+# Área de scroll del historial del drawer (clip + offset + barra arrastrable).
+llimphi-widget-scroll = { workspace = true }
+# Sidebars acoplables (Fase 11c): rail de dientes + navegador de Mónadas/archivos
+# + toggle Árbol/Grafo. El plano de datos lo provee nouser vía chasqui-card.
+llimphi-widget-dock-rail = { workspace = true }
+llimphi-widget-navigator = { workspace = true }
+llimphi-widget-segmented = { workspace = true }
+# Protocolo de query de nouser (list_monads / resolve_monad) — fuente
+# autoritativa de qué archivos componen una Mónada. Importamos sólo los wire
+# types + cliente blocking, sin arrastrar el engine (notify/sled/blake3).
+chasqui-card = { workspace = true }
+# Descubrimiento del socket del daemon vía broker brahman (Card consumer +
+# await_provider_blocking), con fallback al default path. Mismo patrón que
+# chasqui-explorer-llimphi.
+card-sidecar = { workspace = true }
+# MonadId = Ulid: derivamos NavId deterministas de sus bytes; los tests crean ids.
+ulid = { workspace = true }
+llimphi-theme = { workspace = true }
+llimphi-motion = { workspace = true }
+chrono = { workspace = true }
+# Backend wlr-layer-shell (Linux/Wayland): hace que pata se siente al nivel de
+# eww/waybar — layer surface anclada con exclusive zone, no una ventana cliente.
+smithay-client-toolkit = "0.19"
+wayland-client = "0.31"
+# Lista de ventanas (widget `window_list`): wlr-foreign-toplevel-management, el
+# protocolo que usan waybar/eww para enumerar y activar toplevels en wlroots.
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+# Bandeja del sistema (widget `tray`): StatusNotifierItem sobre D-Bus. pata corre
+# como watcher+host en un hilo aparte con zbus async sobre un runtime tokio
+# current-thread (el workspace fija zbus con la feature `tokio`, no la blocking).
+zbus = { workspace = true }
+tokio = { workspace = true }
+# Decodificar PNG de íconos del tray resueltos por nombre (IconName).
+image = { workspace = true }
+raw-window-handle = { workspace = true }
+pollster = { workspace = true }

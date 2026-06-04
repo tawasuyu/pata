@@ -1,0 +1,16 @@
+[package]
+name = "pata-config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "pata — la capa de carga (Linux): lee el TOML del usuario desde las rutas XDG y lo materializa en el modelo no_std de pata-core. Es el límite std→no_std del marco; en wawa este rol lo cumple akasha, no este crate. Trae el binario `pata` para inspeccionar cómo resuelve un config sobre una pantalla dada."
+
+[[bin]]
+name = "pata"
+path = "src/main.rs"
+
+[dependencies]
+pata-core = { path = "../pata-core" }
+toml = { workspace = true }

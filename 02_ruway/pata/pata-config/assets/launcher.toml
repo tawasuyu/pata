@@ -1,0 +1,112 @@
+# Ejemplo de marco de pata. Copialo a ~/.config/pata/launcher.toml y editá.
+#
+# Un marco es una lista de superficies (bar | panel | dock). Cada una se ancla
+# a un borde (top/bottom/left/right) y reparte widgets en sus slots
+# start/center/end. Las barras sólidas reservan su franja; autohide/dock/panel
+# flotan. Inspeccioná el resultado con:
+#   cargo run -p pata-config --bin pata -- --config este.toml --screen 1920x1080
+
+[general]
+timezone = "auto"   # "auto" lo detecta del sistema; o un IANA como "America/Lima"
+
+# --- Barra superior: el menú clásico tipo waybar/eww ---
+[[surfaces]]
+kind = "bar"
+anchor = "top"
+thickness = 32
+gap = 16
+padding = 12
+
+[[surfaces.start]]
+kind = "start_button"
+label = "⊞"
+# Sin `exec`, el clic abre el menú nativo de apps (descubiertas de
+# ~/.config/gioser/apps/*.toml). Para delegar a un lanzador externo en su lugar,
+# fijá p. ej. `exec = "wofi --show drun"`.
+
+[[surfaces.start]]
+kind = "clock"
+format = "%H:%M"
+
+[[surfaces.center]]
+kind = "window_list"
+
+# El racimo de indicadores a la derecha — orden libre.
+[[surfaces.end]]
+kind = "astro"          # posición zodiacal del sol + ciclo lunar (aporte)
+moon = true
+
+[[surfaces.end]]
+kind = "clipboard"          # preview del texto copiado (vía wl-paste)
+# Click → selector de historial. Ejemplo con cliphist + wofi:
+exec = "cliphist list | wofi --dmenu | cliphist decode | wl-copy"
+
+[[surfaces.end]]
+kind = "volume"
+exec = "pavucontrol"   # click en el medidor → mezclador de audio
+
+[[surfaces.end]]
+kind = "brightness"
+
+[[surfaces.end]]
+kind = "tray"
+
+[[surfaces.end]]
+kind = "ram_meter"
+
+[[surfaces.end]]
+kind = "cpu_meter"
+
+# --- Panel: tarjetas flotantes estilo conky sobre el escritorio ---
+# Un panel no reserva franja: sus tarjetas flotan en (x, y) con tamaño (w, h).
+# En layer-shell cada tarjeta es su propia surface en la capa de fondo.
+[[surfaces]]
+kind = "panel"
+
+[[surfaces.cards]]
+x = 40
+y = 80
+w = 220
+h = 110
+title = "sistema"
+
+[[surfaces.cards.widgets]]
+kind = "cpu_meter"
+
+[[surfaces.cards.widgets]]
+kind = "ram_meter"
+
+# --- Sidebar: rail de dientes acoplable con el navegador de Mónadas (Fase 11) ---
+# Colapsado es sólo el rail (una franja de `thickness` px pegada al borde); al
+# clickear un diente despliega su panel (de `panel_width` px) sobre el escritorio
+# con el navegador de las Mónadas de nouser y sus archivos, conmutable
+# árbol/grafo. Requiere un daemon nouser vivo (descubierto por el broker o por el
+# socket default); sin él, el panel muestra "Conectando con nouser…".
+#
+# Abrir un archivo (right-click) lo enruta a la app nativa que declare su mime, o
+# a `xdg-open` si ninguna lo hace. Para que las apps de la suite lo reciban, copiá
+# sus manifiestos a ~/.config/gioser/apps/ (hay ejemplos en
+# shared/app-bus/assets/apps/: media.toml, nada.toml).
+[[surfaces]]
+kind = "sidebar"
+anchor = "left"
+thickness = 44
+panel_width = 300
+
+[[surfaces.tabs]]
+icon = "monads"
+label = "Mónadas"
+content = { kind = "navigator", source = "nouser" }
+
+# --- Shell: barra inferior autoescondible con el input de shuma ---
+# Al escribir, el frontend despliega el resto de shuma estilo Quake.
+[[surfaces]]
+kind = "bar"
+anchor = "bottom"
+thickness = 40
+autohide = true
+
+[[surfaces.center]]
+kind = "shuma_input"
+hotkey = "F12"
+placeholder = "› preguntá, lanzá, navegá"

@@ -1,0 +1,28 @@
+[package]
+name = "pata-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "pata — el marco declarativo del escritorio: barras, paneles y dock con widgets colocables desde un archivo de config. Núcleo agnóstico (no_std + alloc) que comparten el frontend Llimphi (Linux, sobre el compositor mirada) y el kernel launcher de wawa. No conoce a Llimphi, ni a Wayland, ni al framebuffer: sólo el modelo."
+
+[dependencies]
+# pata-core cruza la frontera a wawa por `path` (como mirada-layout): mantiene
+# sus dependencias autocontenidas y `no_std`. `serde` es opcional —el modelo se
+# construye y consulta sin (de)serializar—; los loaders de cada plataforma
+# (TOML en Linux, akasha en wawa) activan la feature. `default-features = false`
+# evita arrastrar `std` aun con serde activo.
+serde = { version = "1", optional = true, default-features = false, features = ["derive", "alloc"] }
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[dev-dependencies]
+# Sólo para los tests: fija el contrato del config en disco (Linux usa TOML).
+# No entra en la build `no_std` —dev-deps no cruzan a wawa—.
+toml = "0.8"
+# Verifica el round-trip del espejo `wire` por postcard (el codec de akasha en
+# wawa): postcard no soporta flatten/untagged, de ahí el espejo. Sólo en tests.
+postcard = { version = "1", features = ["alloc"] }

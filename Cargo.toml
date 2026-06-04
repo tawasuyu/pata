@@ -1,0 +1,439 @@
+# Cargo.toml raíz STANDALONE de pata — front-door sobre Llimphi.
+# Solo el código de pata; Llimphi y lo fundacional por git-dep del monorepo gioser.git.
+[workspace]
+resolver = "2"
+members = [
+    "02_ruway/pata/pata-config",
+    "02_ruway/pata/pata-core",
+    "02_ruway/pata/pata-host",
+    "02_ruway/pata/pata-llimphi",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT"
+authors = ["Sergio <gerencia@jlsoltech.com>"]
+publish = false
+repository = "https://gitea.gioser.net/sergio/pata"
+
+[workspace.dependencies]
+
+# === Registro de apps / menú global ===
+app-bus = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# === Serialización ===
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lsp-types = "0.97"
+serde-big-array = "0.5"
+postcard = { version = "1", features = ["use-std"] }
+toml = "0.8"
+ron = "0.8"
+bincode = "1"
+base64 = "0.22"
+
+# === Errores ===
+thiserror = "2"           # bump uniforme; arje (era 1) puede requerir ajustes menores
+anyhow = "1"
+
+# === Async ===
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# === Observabilidad ===
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# === Linux primitives (arje) ===
+nix = { version = "0.29", features = ["signal", "process", "sched", "mount", "fs", "socket", "net", "user"] }
+libc = "0.2"
+
+# === IDs / Hash / Crypto ===
+ulid = { version = "1", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "rng-getrandom"] }
+sha2 = "0.10"
+blake3 = "1.5"
+ed25519-dalek = "2"
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+
+# === WASM (arje) ===
+# wasmi 1.0: unifica la versión con renaser (su kernel ya corre 1.0), para
+# que el ABI WASM del host sea idéntico en Linux y en bare-metal.
+wasmi = "1.0"
+wat = "1"
+
+# === Storage / DB ===
+sled = "0.34"
+rusqlite = { version = "0.31", features = ["bundled", "blob"] }
+
+# === Ingesta de documentos (iniy-ingest: PDF / EPUB) ===
+pdf-extract = "0.7"
+epub = "2.1"
+
+# === Bulk import Wikipedia (iniy-wiki dump) ===
+bzip2 = "0.4"
+
+# === Compresión (minga multi-bundle) ===
+zstd = "0.13"
+
+# === HTTP server (iniy-server) ===
+axum = "0.7"
+tower = "0.5"
+
+# === ANN sobre embeddings (iniy nli --ann) ===
+instant-distance = "0.6"
+
+# === P2P (minga) ===
+libp2p = { version = "0.56", features = ["tokio", "tcp", "noise", "yamux", "macros", "kad", "identify", "relay", "dcutr", "autonat", "mdns"] }
+libp2p-stream = "=0.4.0-alpha"
+libp2p-allow-block-list = "0.6"
+
+# === SSH (ssh, sandokan RemoteEngine, matilda) ===
+russh = "0.54"
+
+# === Math determinista cross-platform (dominium) ===
+libm = "0.2"
+
+# === SMF (takiy-midi) ===
+# midly: parser/emitter SMF tipo 0/1, no_std-friendly, sin allocs en hot path.
+midly = "0.5"
+
+# === Code parsing (minga) ===
+arboard = "3"
+ropey = "1.6"
+tree-sitter = "0.24"
+tree-sitter-rust = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-go = "0.23"
+
+# === FS notify ===
+notify = "6.1"
+
+# === Grafos (iniy, nakui-core ya lo usa directo en 0.6) ===
+petgraph = "0.6"
+
+# === Image decoding (nahual-image-viewer-llimphi) ===
+# default-features = false: nos quedamos con PNG + JPEG + WebP (lossless).
+# tullpu-render exporta a las tres; AVIF/TIFF/… los habilitamos si una app
+# los pide específicamente.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+# === FUSE (minga-vfs) ===
+# default-features = false: prescinde de pkg-config/libfuse-dev en build.
+# El montaje pasa a ser Rust puro (vía el helper `fusermount3` en runtime).
+fuser = { version = "0.15", default-features = false }
+
+# === CLI / auth (minga) ===
+clap = { version = "4", features = ["derive"] }
+rpassword = "7"
+
+# === PAM (auth-core) ===
+pam = "0.8"
+
+# === D-Bus (arje compat) ===
+zbus = { version = "4", default-features = false, features = ["tokio"] }
+
+# === Tests ===
+tempfile = "3"
+
+# === Llimphi (motor gráfico soberano) ===
+# wgpu sobre Vulkan/Metal/DX12, winit para ventana en dev Linux.
+# raw-window-handle 0.6 alinea winit 0.30 con wgpu 24.
+# vello 0.5 = rasterizador vectorial sobre wgpu 24.
+# taffy 0.9 = motor Flexbox/Grid puro Rust (ya pulled por transitivos, lo alineamos).
+# parley 0.2 = shaping/layout de texto compatible con peniko 0.4 (que vello 0.5 expone).
+wgpu = "24"
+winit = "0.30"
+raw-window-handle = "0.6"
+pollster = "0.4"
+vello = "0.5"
+taffy = "0.9"
+# parley = shaping completo (bidi, ligatures, fallback CJK/emoji vía fontique, line break).
+parley = "0.4"
+# Bucle Elm (input→update→view→layout→raster→present). Lo consumen las apps.
+llimphi-ui = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Paleta semántica compartida por las apps y los widgets.
+llimphi-theme = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Tweens y helpers de animación sobre el bucle Elm.
+llimphi-motion = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Iconos vectoriales (BezPath en grid 24×24) compartidos por todas las apps.
+llimphi-icons = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Widgets reusables sobre llimphi-ui — uno por crate.
+llimphi-widget-app-header = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-banner = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-button = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-clipboard = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-context-menu = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-edit-menu = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-menubar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-list = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-grid = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-slider = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-scroll = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-splitter = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-stat-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-tabs = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-command-palette = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-diff-viewer = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-fif = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-file-picker = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-bookmarks = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-mini-map = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-shuma-term = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-module-symbol-outline = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-plugin-host = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-theme-switcher = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-text-area = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-text-editor-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-text-editor = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-text-editor-lsp = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-text-input = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-tiled = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-nodegraph = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-tree = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-navigator = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Sello vectorial wawa (rombo + W implícita + Merkle Core).
+llimphi-widget-wawa-mark = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Widgets de elegancia transversal (tooltip, spinner, progress, toast,
+# modal, empty, status-bar, shortcuts-help, splash).
+llimphi-widget-tooltip = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-spinner = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-progress = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-toast = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-modal = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-empty = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-status-bar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-shortcuts-help = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-timeline = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-splash = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Controles de formulario y signaling (switch, segmented, breadcrumb,
+# badge, avatar, skeleton, field).
+llimphi-widget-switch = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-segmented = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-dock-rail = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-breadcrumb = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-badge = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-avatar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-skeleton = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-field = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Firma visual transversal (gradient sutil + hairline accent).
+llimphi-widget-panel = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-widget-panes = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+llimphi-workspace = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+# Abstracción Selector — host (paths) + wawa (khipus).
+llimphi-module-selector = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+
+# === Filesystem helpers ===
+directories = "5"
+
+# === Diff line-based (llimphi-module-diff-viewer) ===
+# `similar` es la crate de facto: implementa Myers + Patience + LCS,
+# expone `TextDiff` con ChangeTag por línea (Equal/Insert/Delete),
+# zero deps fuera de std. La 2.x es estable hace años.
+similar = "2"
+
+# === Fuzzy matching (shuma-history) ===
+# nucleo-matcher = mismo matcher que helix-editor: rápido, Unicode-correct,
+# bonus por prefijos, ranking estable. La versión 0.3 expone el API simple
+# que necesitamos (Matcher + Pattern + score).
+nucleo-matcher = "0.3"
+
+# === Transporte autenticado (shuma-link) ===
+# snow = framework Noise pure-rust. Lo usamos en modo Noise_XK (cliente
+# conoce la pubkey del servidor, server descubre la del cliente y la
+# valida contra una allowlist). ChaCha20-Poly1305 + X25519 + BLAKE2s.
+# La versión 0.9 viene pinneada por libp2p, así nos alineamos.
+snow = "0.9"
+hex = "0.4"
+
+# === PTY + emulador de terminal (shuma-exec, módulos REPL) ===
+# portable-pty aloja un PTY cross-platform; lo usamos para los
+# comandos TUI tipo vim/htop/less que necesitan un terminal de verdad.
+# vt100 parsea la secuencia de bytes que el PTY emite (ANSI + cursor
+# movement + erase + screen state) y mantiene un buffer de pantalla
+# renderizable como grid.
+portable-pty = "0.9"
+vt100 = "0.16"
+
+# === WASM web (gioser) ===
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = "0.3"
+glam = "0.30"
+
+# === Markdown (pluma) ===
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+
+# === Archivos comprimidos (nahual archive viewer) ===
+# Sólo listamos el directorio central (nombres/tamaños); no descomprimimos,
+# por eso default-features=false alcanza para ZIP. Para tar.gz sí
+# descomprimimos en streaming con flate2 (ya declarado arriba), saltando
+# los datos de cada entrada — sólo leemos headers.
+zip = { version = "2.4", default-features = false }
+tar = { version = "0.4", default-features = false }
+
+# === Fuentes (nahual font viewer) ===
+# Parseo de TTF/OTF/TTC y extracción de contornos de glifo a paths.
+ttf-parser = "0.25"
+
+# ============================================================
+# Intra-workspace deps de nahual (referenciadas por workspace = true)
+# ============================================================
+nahual-text-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-image-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-thumb-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-gallery-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-video-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-card-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-audio-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-tree-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-hex-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-table-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-markdown-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-archive-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-font-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-map-viewer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-geo-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-viewer-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+nahual-file-explorer-llimphi = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+
+# ============================================================
+# Intra-workspace deps de pineal (módulo de gráficos)
+# ============================================================
+pineal-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-render = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-cartesian = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-stream = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-mesh = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-financial = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-polar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-heatmap = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-treemap = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-flow = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-phosphor = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-export = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-hexbin = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-contour = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal-bars = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pineal = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+
+# ============================================================
+# Intra-workspace deps de iniy (laboratorio semántico de creencias)
+# ============================================================
+iniy-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-ingest = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-extract = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-nli = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-nli-llm = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-graph = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+iniy-store = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+
+# === auto: declarados por crates internos faltantes ===
+cosmos-coords = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+cosmos-core = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+cosmos-ephemeris = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+cosmos-time = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+cosmos-wcs = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+
+# === auto: externas de eternal ===
+celestial-eop-data = { version = "0.1"}
+approx = "0.5"
+byteorder = "1.5"
+cc = "1.0"
+chrono = "0.4"
+crc32fast = "1.4"
+criterion = "0.5"
+csv = "1.4"
+flate2 = "1.0"
+glob = "0.3"
+indicatif = "0.18"
+lz4_flex = "0.11"
+memmap2 = "0.9"
+mockito = "1.0"
+ndarray = "0.15"
+num-traits = "0.2"
+once_cell = "1.19"
+parking_lot = "0.12"
+png = "0.18"
+proptest = "1.4"
+quick-xml = "0.31"
+rayon = "1.8"
+regex = "1.11"
+reqwest = "0.12"
+tiff = "0.11"
+wide = "0.7"
+wiremock = "0.6"
+
+# === i18n (rimay-localize) ===
+fluent-bundle = "0.15"
+unic-langid = { version = "0.9", features = ["macros"] }
+sys-locale = "0.3"
+
+# === Servo (puriy-engine) ===
+# Crates publicados de Servo embebibles individualmente. html5ever/markup5ever
+# ya entran via ammonia→surrealdb→nakui, así que alineamos versión para no
+# duplicar el árbol. markup5ever_rcdom es el DOM Rc-based simple (suficiente
+# para Fase 2: parsear y renderizar, sin scripting). cssparser es el tokenizer
+# CSS de Stylo, sirve para inline styles. ureq = HTTP síncrono minimalista,
+# evita pull de tokio en el engine.
+html5ever = "0.39"
+markup5ever = "0.39"
+markup5ever_rcdom = "0.39"
+cssparser = "0.35"
+url = "2"
+ureq = { version = "2", default-features = false, features = ["tls"] }
+
+# === takiy-synth (SoundFont MIDI) ===
+# rustysynth = sintetizador SF2 puro Rust, MIT. Reemplaza el oscilador
+# feo de takiy-synth por muestras reales (FluidR3, GeneralUser GS, etc).
+rustysynth = "1.3"
+
+# === takiy-playback (audio device output) ===
+# cpal = backend de audio cross-platform (ALSA/PulseAudio/Pipewire en
+# Linux, WASAPI en Windows, CoreAudio en macOS). Lo usamos sólo para
+# abrir el device default y empujar muestras f32 — nada de mezclado
+# ni efectos en el callback.
+cpal = "0.15"
+
+# === media-source-wav (decoder PCM en disco) ===
+# hound = lector/escritor WAV puro-Rust, sin deps nativas. Soporta PCM
+# entero (8/16/24/32) y float (32). Suficiente para abrir samples y
+# stems de prueba sin meter ffmpeg/symphonia.
+hound = "3.5"
+
+# === media-source-{mp3,flac,vorbis} (decoders vía symphonia) ===
+# symphonia es una colección de decoders puro-Rust mantenida. `mp3` cubre
+# media-source-mp3; `flac` (decoder + demuxer FLAC nativo) cubre
+# media-source-flac (lossless); `vorbis` + `ogg` (codec + demuxer Ogg)
+# cubren media-source-vorbis (lossy clásico, libre de patentes). Sin aac:
+# ese tier patentado entra por shared/foreign-av.
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "flac", "vorbis", "ogg"] }
+
+# === media-source-opus (decoder Opus NATIVO puro-Rust) ===
+# Opus es el formato de audio nativo de gioser (par del video AV1). ogg
+# demuxea las páginas Ogg; opus-wave es un port puro-Rust de libopus
+# (SILK+CELT, sin C ni FFI) — par del rav1d del lado video.
+ogg = "0.9"
+opus-wave = "3"
+
+# === media-source-webm (demux nativo Matroska/WebM) ===
+# matroska-demuxer es un demuxer puro-Rust de MKV/WebM (EBML). Saca los
+# paquetes de los tracks V_AV1 y A_OPUS para alimentar a media-source-av1
+# y media-source-opus — un .webm AV1+Opus se reproduce 100% nativo.
+matroska-demuxer = "0.7"
+# === git-deps al monorepo (agregados por la extracción) ===
+card-sidecar = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+chasqui-card = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+pluma-llm = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+shuma-exec = { git = "https://gitea.gioser.net/sergio/gioser.git" }
+shuma-line = { git = "https://gitea.gioser.net/sergio/gioser.git" }
