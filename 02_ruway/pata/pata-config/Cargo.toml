@@ -12,5 +12,6 @@ name = "pata"
 path = "src/main.rs"
 
 [dependencies]
+bitacora = { workspace = true }
 pata-core = { path = "../pata-core" }
 toml = { workspace = true }

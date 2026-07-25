@@ -1,0 +1,34 @@
+{
+  "hosts": {
+    "edge-1": { "name": "edge-1", "address": "10.0.0.1", "tags": ["prod", "edge"], "user": null, "port": null },
+    "db-1": { "name": "db-1", "address": "10.0.0.2", "tags": ["prod", "db"], "user": "admin", "port": 2222 }
+  },
+  "containers": {
+    "web": {
+      "name": "web", "image": "nginx:1.27",
+      "ports": [{ "host": 8080, "container": 80 }],
+      "env": [], "volumes": [["/srv/site", "/usr/share/nginx/html"]],
+      "restart": "always"
+    },
+    "api": {
+      "name": "api", "image": "ghcr.io/jl/api:1.0",
+      "ports": [{ "host": 9000, "container": 9000 }],
+      "env": [["DATABASE_URL", "postgres://db/app"]], "volumes": [],
+      "restart": "unless-stopped"
+    },
+    "pg": {
+      "name": "pg", "image": "postgres:16",
+      "ports": [], "env": [], "volumes": [["/srv/pg", "/var/lib/postgresql/data"]],
+      "restart": "always"
+    }
+  },
+  "vhosts": {
+    "jlsoltech.com": {
+      "domain": "jlsoltech.com",
+      "upstream": { "Container": { "name": "web", "port": 80 } },
+      "tls": true,
+      "aliases": ["www.jlsoltech.com"]
+    }
+  },
+  "services": {}
+}

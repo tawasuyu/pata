@@ -1,0 +1,54 @@
+[package]
+name = "pata-notify"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "Daemon de notificaciones de escritorio de tawasuyu: implementa org.freedesktop.Notifications (D-Bus) y se pinta a sí mismo como una caja wlr-layer-shell en la esquina (toasts), reusando llimphi-widget-toast. Agnóstico del compositor (mirada/Sway/Hyprland). Persiste cada notificación en un store sled — sustrato para el panel de historial y la capa de triage semántico/IA."
+
+[[bin]]
+name = "pata-notify"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+bitacora = { workspace = true }
+llimphi-ui = { workspace = true }
+llimphi-layer = { workspace = true }
+llimphi-widget-toast = { workspace = true }
+llimphi-widget-progress = { workspace = true }
+llimphi-theme = { workspace = true }
+# El cómputo central de progreso (velocidad/ETA/historial) vive agnóstico en
+# pata-core; el daemon sólo alimenta muestras y pinta.
+pata-core = { path = "../pata-core" }
+zbus = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+sled = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+postcard = { workspace = true }
+# Espejo al centro de eventos: el esquema (willay-core) para construir el Evento
+# y el cliente (willay-emit) para emitirlo. La Notificacion entera sigue en el
+# store propio; willay sólo recibe la entrada liviana del índice.
+willay-core = { workspace = true }
+willay-emit = { workspace = true }
+# Espejo a TUS OTROS EQUIPOS: la notificación que aparece en el PC aparece
+# también en el teléfono. `tejido` trae el roster firmado + el protocolo de
+# avisos; `card-net` el nodo p2p que el servicio mantiene vivo. Best-effort:
+# sin roster el espejo no arranca y el daemon notifica local como siempre.
+tejido = { workspace = true }
+card-net = { workspace = true }
+
+[dev-dependencies]
+png = { workspace = true }
+pollster = { workspace = true }
+
+[[example]]
+name = "progreso_shot"
+path = "examples/progreso_shot.rs"

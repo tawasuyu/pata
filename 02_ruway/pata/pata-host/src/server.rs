@@ -6,13 +6,16 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use crate::{read_frame, socket_path, write_frame, AppMsg, HostedTooth, ShellMsg};
+use crate::{read_frame, socket_path, write_frame, AppMsg, HostedTooth, ShellCommand, ShellMsg};
 
-/// Una app registrada: su título, sus dientes y la mitad de escritura de su
-/// conexión (para mandarle `Activate`).
+/// Una app registrada: su título, sus dientes, el diente activo (su panel
+/// desplegado, si la app lo reporta) y la mitad de escritura de su conexión
+/// (para mandarle `Activate`).
 struct AppReg {
     title: String,
     teeth: Vec<HostedTooth>,
+    /// Diente activo según la app (`SetActive`); `None` = nada desplegado.
+    active: Option<u32>,
     write: UnixStream,
 }
 
@@ -22,6 +25,9 @@ struct Shared {
     /// Se incrementa en cada cambio (alta/baja/update) para que el host detecte
     /// "hay algo nuevo que pintar" sin difear el mapa.
     revision: AtomicU64,
+    /// Comandos sueltos ([`ShellCommand`], p. ej. de la esquina caliente) a la
+    /// espera de que el bucle de UI los drene con [`HostServer::take_commands`].
+    commands: Mutex<Vec<ShellCommand>>,
 }
 
 /// El servidor del rail hospedado. Vive en pata; arranca su hilo aceptador en
@@ -50,6 +56,7 @@ impl HostServer {
         let shared = Arc::new(Shared {
             apps: Mutex::new(HashMap::new()),
             revision: AtomicU64::new(0),
+            commands: Mutex::new(Vec::new()),
         });
 
         let shared_accept = shared.clone();
@@ -65,11 +72,13 @@ impl HostServer {
         Some(HostServer { shared })
     }
 
-    /// Snapshot (clonado) del título + dientes de `app_id`, si está registrada.
-    /// Para que el host lo pinte sin retener el lock.
-    pub fn snapshot(&self, app_id: &str) -> Option<(String, Vec<HostedTooth>)> {
+    /// Snapshot (clonado) del título, dientes y diente activo de `app_id`, si
+    /// está registrada. Para que el host lo pinte sin retener el lock. `active`
+    /// es `None` mientras la app no reporte un panel desplegado (`SetActive`).
+    pub fn snapshot(&self, app_id: &str) -> Option<(String, Vec<HostedTooth>, Option<u32>)> {
         let apps = self.shared.apps.lock().ok()?;
-        apps.get(app_id).map(|r| (r.title.clone(), r.teeth.clone()))
+        apps.get(app_id)
+            .map(|r| (r.title.clone(), r.teeth.clone(), r.active))
     }
 
     /// `true` si alguna app tiene dientes registrados (para saber si vale la pena
@@ -97,6 +106,15 @@ impl HostServer {
     pub fn revision(&self) -> u64 {
         self.shared.revision.load(Ordering::Relaxed)
     }
+
+    /// Drena los [`ShellCommand`] acumulados (esquina caliente, etc.). El bucle de
+    /// UI lo llama cada frame y los traduce a acciones. Vacía la cola.
+    pub fn take_commands(&self) -> Vec<ShellCommand> {
+        match self.shared.commands.lock() {
+            Ok(mut q) if !q.is_empty() => std::mem::take(&mut *q),
+            _ => Vec::new(),
+        }
+    }
 }
 
 /// Atiende una conexión: lee `AppMsg`s y mantiene el mapa. Al cerrarse el stream
@@ -123,7 +141,15 @@ fn handle_conn(stream: UnixStream, shared: Arc<Shared>) {
                     Err(_) => return,
                 };
                 if let Ok(mut apps) = shared.apps.lock() {
-                    apps.insert(app_id.clone(), AppReg { title, teeth, write });
+                    apps.insert(
+                        app_id.clone(),
+                        AppReg {
+                            title,
+                            teeth,
+                            active: None,
+                            write,
+                        },
+                    );
                 }
                 my_app_id = Some(app_id);
                 bump(&shared);
@@ -137,6 +163,24 @@ fn handle_conn(stream: UnixStream, shared: Arc<Shared>) {
                     }
                     bump(&shared);
                 }
+            }
+            Ok(AppMsg::SetActive { tooth }) => {
+                if let Some(id) = &my_app_id {
+                    if let Ok(mut apps) = shared.apps.lock() {
+                        if let Some(reg) = apps.get_mut(id) {
+                            reg.active = tooth;
+                        }
+                    }
+                    bump(&shared);
+                }
+            }
+            Ok(AppMsg::Command(cmd)) => {
+                // Disparo suelto (no atado a una app de rail): a la cola para que
+                // el bucle de UI lo drene. No requiere `Register` previo.
+                if let Ok(mut q) = shared.commands.lock() {
+                    q.push(cmd);
+                }
+                bump(&shared);
             }
             Ok(AppMsg::Bye) | Err(_) => {
                 // Bye explícito o EOF/error: damos de baja y salimos.

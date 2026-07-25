@@ -15,33 +15,143 @@ path = "src/main.rs"
 path = "src/lib.rs"
 
 [dependencies]
+bitacora = { workspace = true }
 pata-core = { path = "../pata-core" }
 pata-config = { path = "../pata-config" }
+# Historial de portapapeles persistente (Klipper): texto/imágenes, fijar, buscar.
+pata-portapapeles = { path = "../pata-portapapeles" }
+# Cielo: los cores de cosmos (VSOP2013/ELP, STD) para los fantasmas astrales
+# ricos (reloj de sol, luna precisa, eclipses, mareas, cielo esta noche). Se
+# computan del lado host en un hilo lento (`crate::cielo`); el widget astral
+# `no_std` de pata-core (luna/signo de baja precisión) sigue para el launcher wawa.
+cosmos-core = { workspace = true }
+cosmos-time = { workspace = true }
+cosmos-sundial = { workspace = true }
+cosmos-skywatch = { workspace = true }
+cosmos-tides = { workspace = true }
+cosmos-eclipses = { workspace = true }
+# La carta del momento para el diálogo Cielo (aspectos entre todos los cuerpos,
+# Asc/MC): el motor astrológico real, no una re-derivación.
+cosmos-astrology = { workspace = true }
+cosmos-sky = { workspace = true }
+# Nota que se desvanece: modelo (Note/NoteStore) y física temporal (decay/
+# reinforce/horizonte) de khipu para la captura rápida desde la barra — un store
+# soberano propio (JSON) con las mismas primitivas que khipu-app.
+khipu-core = { workspace = true }
+khipu-gravity = { workspace = true }
+# El común / préstamos: cadena de custodia firmada (tampu-core) + almacén de
+# archivos (tampu-store, sin lock, lectura concurrente segura) para el fantasma
+# «común» — qué prestaste, qué tienes en custodia, devoluciones vencidas.
+tampu-core = { workspace = true }
+tampu-store = { workspace = true }
+# Ágora (sustrato de confianza): el fantasma «¿Le creo?» lee —sólo lectura— el
+# grafo de confianza en disco (`graph.json`, vía agora-store con re-verificación
+# de firmas) y la libreta de petnames (postcard) para resolver revocaciones a
+# nombres memorables. Sin estado vivo de gossip: surface honesto de hechos en
+# disco (revocaciones de gente que nombraste + resumen de la red de confianza).
+agora-store = { workspace = true }
+agora-graph = { workspace = true }
+agora-core = { workspace = true }
+agora-petnames = { workspace = true }
+# Para deserializar la libreta de petnames (`libreta.postcard`).
+postcard = { workspace = true }
+# Contextos de usuario (pacha): el primer PERFIL montado como diente del panel.
+# Puro (serde/ron): pata lee el catálogo `pachas.ron` para listar las instancias
+# (contextos) y resumir su contenido. La activación se delega a `pacha switch`.
+pacha-core = { workspace = true }
+# Flota baremetal (read-only): modelo de inventario de matilda (sólo serde, sin
+# tokio/SSH). El diente «Flota» del sidebar lista hosts/contenedores/vhosts y un
+# PREVIEW del plan de despliegue (plan + steps son puros; NO se trae apply/linker,
+# que ejecutan en vivo por SSH — destructivo).
+matilda-core = { workspace = true }
+# Cuentas SSH marcadas «automáticas»: se suman al inventario de flota para
+# monitorearlas como locales (crate compartido `cuentas`).
+cuentas = { workspace = true }
+matilda-plan = { workspace = true }
+matilda-apply = { workspace = true }
+# Discover REMOTO read-only: inspecciona un host por SSH (docker ps / ls nginx) y
+# parsea su estado real para el «drift» en el panel Flota. matilda-linker trae el
+# enlace SSH (russh); sólo se usan comandos de LECTURA (no apply en vivo).
+matilda-discover = { workspace = true }
+matilda-linker = { workspace = true }
+# Unidades del plano de control (sandokan): el diente «Unidades» lee el estado +
+# telemetría de las unidades vivas vía arje-bus (`$ENTE_BUS_SOCK`), read-only.
+sandokan-arje-engine = { workspace = true }
+sandokan-monitor-core = { workspace = true }
+sandokan-lifecycle = { workspace = true }
+# Emisión de cada clip nuevo al centro de eventos (no-op si willay no corre).
+willay-core = { workspace = true }
+willay-emit = { workspace = true }
 # Rail hospedado (sidebar delegado): pata hospeda los dientes de la app enfocada
 # y le reenvía las activaciones. Lado servidor del protocolo.
 pata-host = { path = "../pata-host" }
-# El puente pata→shuma (SDD §5): el marco provee el borde, shuma la ejecución.
-# El drawer Quake corre los comandos por el ejecutor real de shuma (captura
-# acotada, streaming) en vez de un `sh -c` pelado.
-shuma-exec = { workspace = true }
-# El cerebro de la línea de shuma (agnóstico de GUI): descompone el comando en
-# etapas de pipe para las chips clickeables del drawer.
-shuma-line = { workspace = true }
-# IA en el drawer Quake: el submit sin prefijo `!`/`$` va al LLM (fachada
-# transparente de pluma; cae a Mock sin credenciales). Paridad con el quake de
-# mirada-launcher, que pata reemplaza (SDD Fase 10).
-pluma-llm = { workspace = true }
-# Registro de apps para el menú del botón de inicio (descubre ~/.config/gioser/
+# El front universal de nahual, hospedado como módulo en un drawer Quake
+# (Super+E). Mismo motor que nahual-shell sobre nahual-source-core; pata le
+# rutea eventos y ejecuta sus Effects (miniaturas, lanzar apps).
+nahual-module = { workspace = true }
+# El puente pata→shuma (SDD §5): el marco provee el borde, shuma el contenido.
+# El drawer Quake **hospeda el shell real de shuma** montando el módulo
+# `shuma-module-shell` —el mismo de `shuma-shell-llimphi`, con cards, cuerpo
+# IDE-text, scroll y detección PTY/TUI—. pata no reimplementa nada: instancia su
+# `State`, le rutea teclas/tick/clicks (vía el `lift` Msg::ShumaShell) y pinta su
+# `view`. Reemplaza al viejo reimplemento de cards + al terminal PTY aparte.
+shuma-module-shell = { workspace = true }
+# Vocabulario común de los módulos de shuma — `Source` (Local/Daemon/…) para
+# construir el `State` del shell hospedado.
+shuma-module = { workspace = true }
+# Absorción del entorno de login (`login_env::sync_into_process`): pata lo
+# arranca desde mirada con un PATH mínimo (`/usr/local/bin:/usr/bin:…`), sin el
+# `~/.local/bin`/nvm/npm de tu `.zshrc` donde vive `claude` y demás. Sin esto,
+# el shell hospedado no encuentra esos binarios (spawn ENOENT → x roja). Lo
+# sincronizamos una vez al arrancar, igual que la shuma standalone (`wire_login_env`).
+shuma-config = { workspace = true }
+# La shuma COMPLETA (Model + chrome con dientes/sesiones) como lib hosteable
+# (Regla 2). Para el drawer con paridad total al standalone: pata construye su
+# Model con `new_model()`, lo tickea con un Handle lifteado y pinta
+# `view(model).map(...)`. Sin ciclo: shuma-shell-llimphi → pata-host (hoja).
+shuma-shell-llimphi = { workspace = true }
+# Captura de voz manos-libres para el botón de micrófono del input hospedado:
+# `rimay-voz-host` abre el mic (cpal) con VAD por energía (rimay-voz-core) y
+# emite `EventoEscucha`; con el STT mock (default) cualquier utterance despierta
+# y dicta sin daemon ni nube. `shuma-voz-ui` nombra el `EstadoEscucha` que el
+# input pinta (Esperando/Oyendo/Despierto/Dictando).
+rimay-voz = { workspace = true }
+rimay-voz-host = { workspace = true }
+shuma-voz-ui = { workspace = true }
+# Registro de apps para el menú del botón de inicio (descubre ~/.config/tawasuyu/
 # apps/*.toml). El menú nativo reemplaza a depender de wofi/rofi externos.
 app-bus = { workspace = true }
+# Puente de lanzamiento: si arje está levantado, las apps del menú entran al
+# grafo como Entes OneShot supervisados (RunCard); si no, spawn crudo. Mismo
+# patrón opt-in+fallback del session-manager de mirada, centralizado.
+arje-applaunch = { workspace = true }
+# El motor RAG sobre el correo de paloma, hospedado como sidebar: lee la caché en
+# disco de paloma de sólo-lectura (corpus + índice semántico), embebe la consulta
+# por el daemon de rimay-verbo, recupera los mails relevantes y redacta una
+# respuesta citada con pluma-llm. pata sólo le rutea el input y pinta el panel.
+paloma-rag = { workspace = true }
+# El widget `rag` es agnóstico de la fuente: el trait + tipos de cita (rag-motor)
+# y el motor sobre el centro de eventos (willay-rag), junto a paloma (correo).
+rag-motor = { workspace = true }
+willay-rag = { workspace = true }
 llimphi-ui = { workspace = true }
 # Área de scroll del historial del drawer (clip + offset + barra arrastrable).
 llimphi-widget-scroll = { workspace = true }
 # Sidebars acoplables (Fase 11c): rail de dientes + navegador de Mónadas/archivos
 # + toggle Árbol/Grafo. El plano de datos lo provee nouser vía chasqui-card.
 llimphi-widget-dock-rail = { workspace = true }
+# El chrome reusable del sidebar (header + buscador + control + multiswitch).
+llimphi-widget-rag-sidebar = { workspace = true }
 llimphi-widget-navigator = { workspace = true }
 llimphi-widget-segmented = { workspace = true }
+# Íconos vectoriales (Lucide-like) para los dientes de los rails — coloreados.
+llimphi-icons = { workspace = true }
+# Wrap + chip para el grid de íconos del menú activities GNOME.
+llimphi-widget-wrap = { workspace = true }
+llimphi-widget-chip = { workspace = true }
+# Control panel (quick settings): sliders de volumen/brillo + switches wifi/bt.
+llimphi-widget-slider = { workspace = true }
+llimphi-widget-switch = { workspace = true }
 # Protocolo de query de nouser (list_monads / resolve_monad) — fuente
 # autoritativa de qué archivos componen una Mónada. Importamos sólo los wire
 # types + cliente blocking, sin arrastrar el engine (notify/sled/blake3).
@@ -50,11 +160,24 @@ chasqui-card = { workspace = true }
 # await_provider_blocking), con fallback al default path. Mismo patrón que
 # chasqui-explorer-llimphi.
 card-sidecar = { workspace = true }
+# Config GLOBAL del escritorio (incl. dónde van los dientes): una sola fuente
+# de verdad que todas las apps respetan.
+wawa-config = { workspace = true }
+# Localización (i18n): los strings de usuario del chrome pasan por t()/t_args().
+rimay-localize = { workspace = true }
 # MonadId = Ulid: derivamos NavId deterministas de sus bytes; los tests crean ids.
 ulid = { workspace = true }
 llimphi-theme = { workspace = true }
 llimphi-motion = { workspace = true }
+# Íconos `.desktop` reales en el menú de inicio: resolución XDG mínima +
+# parseo SVG vía vello_svg, cacheado entre frames.
+llimphi-svg = { workspace = true }
+# Decode de íconos raster (PNG/XPM-no, la mayoría del software del sistema trae
+# PNG, no SVG) a `peniko::Image` para `View::image`.
+llimphi-image = { workspace = true }
 chrono = { workspace = true }
+# Parseo del JSON del clima (widget `weather`): wttr.in / open-meteo por curl.
+serde_json = { workspace = true }
 # Backend wlr-layer-shell (Linux/Wayland): hace que pata se siente al nivel de
 # eww/waybar — layer surface anclada con exclusive zone, no una ventana cliente.
 smithay-client-toolkit = "0.19"
@@ -62,12 +185,43 @@ wayland-client = "0.31"
 # Lista de ventanas (widget `window_list`): wlr-foreign-toplevel-management, el
 # protocolo que usan waybar/eww para enumerar y activar toplevels en wlroots.
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+# Puente propio mirada_toplevel_icon: el nombre de ícono que cada ventana declaró
+# vía xdg_toplevel_icon, para pintar el ícono del cliente en la taskbar (el
+# foreign-toplevel estándar no lo transmite). Sólo entre mirada y pata.
+mirada-toplevel-icon-proto = { workspace = true, features = ["client"] }
+# Inactividad del sistema (idle inteligente de energía): ext-idle-notify-v1, el
+# mismo protocolo que usa swayidle. mirada lo implementa; pata registra una
+# notificación de inactividad y, al dispararse, consulta el veto (unidades +
+# carga) antes de suspender — sin cortar trabajo importante.
+wayland-protocols = { version = "0.32", features = ["client", "staging", "unstable"] }
 # Bandeja del sistema (widget `tray`): StatusNotifierItem sobre D-Bus. pata corre
 # como watcher+host en un hilo aparte con zbus async sobre un runtime tokio
 # current-thread (el workspace fija zbus con la feature `tokio`, no la blocking).
 zbus = { workspace = true }
 tokio = { workspace = true }
+# Triage semántico de notificaciones (importancia por significado, no por
+# palabras) para la marquesina del input. Corre `pata-notify-triage` en un hilo;
+# degrada a la urgencia freedesktop sin el daemon de embeddings, y a nada sin el
+# daemon de notificaciones. Sin ciclo: pata → triage.
+pata-notify = { path = "../pata-notify" }
+pata-notify-triage = { path = "../pata-notify-triage" }
+rimay-verbo = { workspace = true }
+pluma-llm = { workspace = true }
 # Decodificar PNG de íconos del tray resueltos por nombre (IconName).
 image = { workspace = true }
 raw-window-handle = { workspace = true }
 pollster = { workspace = true }
+# Paisaje sonoro del escritorio (módulo `paisaje`): música ambiental generada por
+# takiy según hora/contexto/actividad/ventanas, reproducida desde el shell sin abrir
+# apps standalone. La lógica es agnóstica (takiy-ambiente); aquí se compone
+# (takiy-genesis), sintetiza (takiy-synth) y reproduce en bucle (takiy-playback).
+takiy-ambiente = { workspace = true }
+takiy-genesis = { workspace = true }
+takiy-synth = { workspace = true }
+takiy-playback = { workspace = true }
+
+[dev-dependencies]
+# Verificación headless de widgets a PNG (ej. `examples/badge_largo`).
+png = { workspace = true }
+# Construir un MonitorSnapshot de muestra en el shot del diente «Unidades».
+sandokan-core = { workspace = true }

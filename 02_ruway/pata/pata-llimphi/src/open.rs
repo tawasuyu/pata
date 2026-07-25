@@ -4,7 +4,7 @@
 //! en disco, resuelta por nouser). Al abrir uno (right-click), enrutamos a la app
 //! adecuada en dos pasos:
 //!
-//! 1. **Apps nativas de gioser** (`app-bus`): si alguna app declara manejar el
+//! 1. **Apps nativas de tawasuyu** (`app-bus`): si alguna app declara manejar el
 //!    mime del archivo (`handles = ["…"]` en su manifiesto), la lanzamos con la
 //!    ruta como argumento (sustitución freedesktop `%f`/`%u` vía
 //!    [`app_bus::AppEntry::open`]). Las apps de la suite tienen prioridad.
@@ -81,7 +81,7 @@ pub fn mime_for_path(path: &str) -> Option<&'static str> {
 /// Qué hizo [`open_file`], para log/diagnóstico.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Opened {
-    /// Una app nativa de gioser abrió el archivo (su `label`).
+    /// Una app nativa de tawasuyu abrió el archivo (su `label`).
     NativeApp(String),
     /// Se delegó en `xdg-open`.
     SystemDefault,
@@ -114,9 +114,12 @@ pub fn handlers_for_path(registry: &AppRegistry, path: &str) -> Vec<(String, Str
 /// `xdg-open`. Para la elección explícita del menú "Abrir con…".
 pub fn open_with_id(registry: &AppRegistry, app_id: &str, path: &str) -> Opened {
     if let Some(app) = registry.get(app_id) {
-        match app.open(path) {
-            Ok(_) => return Opened::NativeApp(app.label.clone()),
-            Err(e) => eprintln!("pata · {} no pudo abrir {path}: {e}; uso xdg-open", app.label),
+        // Vía arje si está levantado (Ente OneShot); si no, open crudo del host.
+        match arje_applaunch::open_entry(app, path) {
+            arje_applaunch::Outcome::Failed(e) => {
+                eprintln!("pata · {} no pudo abrir {path}: {e}; uso xdg-open", app.label)
+            }
+            _ => return Opened::NativeApp(app.label.clone()),
         }
     }
     open_system(path)
@@ -171,7 +174,7 @@ mod tests {
     }
 
     /// Un registro con las apps de ejemplo (media + nada), construido en memoria
-    /// desde el mismo formato TOML de `~/.config/gioser/apps/`.
+    /// desde el mismo formato TOML de `~/.config/tawasuyu/apps/`.
     fn registro_ejemplo() -> AppRegistry {
         let media = app_bus::parse_entry(
             "id='media'\nlabel='Media'\nhandles=['video/mp4','audio/mpeg']\n[launch]\nexec='media-app'\nargs=['%f']",

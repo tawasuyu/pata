@@ -24,7 +24,8 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
-    Anchor, Config, FloatingCard, General, Prop, SidebarTab, Surface, SurfaceKind, WidgetSpec,
+    Anchor, Config, FloatingCard, General, Prop, SidebarTab, Surface, SurfaceKind, TabsSource,
+    WidgetSpec,
 };
 
 /// Valor de propiedad **etiquetado** (a diferencia de [`Prop`], que es
@@ -158,6 +159,7 @@ impl From<WireTab> for SidebarTab {
             icon: t.icon,
             label: t.label,
             content: WidgetSpec::from(t.content),
+            ..SidebarTab::default()
         }
     }
 }
@@ -172,6 +174,11 @@ pub struct WireSurface {
     pub autohide: bool,
     pub padding: f32,
     pub gap: f32,
+    pub opacity: f32,
+    pub radius: f32,
+    pub margin: f32,
+    pub gradient: bool,
+    pub cell: f32,
     pub start: Vec<WireWidget>,
     pub center: Vec<WireWidget>,
     pub end: Vec<WireWidget>,
@@ -190,6 +197,11 @@ impl From<&Surface> for WireSurface {
             autohide: s.autohide,
             padding: s.padding,
             gap: s.gap,
+            opacity: s.opacity,
+            radius: s.radius,
+            margin: s.margin,
+            gradient: s.gradient,
+            cell: s.cell,
             start: a_wire(&s.start),
             center: a_wire(&s.center),
             end: a_wire(&s.end),
@@ -204,19 +216,38 @@ impl From<&Surface> for WireSurface {
 impl From<WireSurface> for Surface {
     fn from(s: WireSurface) -> Self {
         Surface {
+            // El wire (wawa) no transporta nombre/encendido; defaults.
+            name: String::new(),
+            enabled: true,
             kind: s.kind,
             anchor: s.anchor,
             thickness: s.thickness,
             autohide: s.autohide,
+            // El wire (wawa) no transporta los overrides de docked/posición todavía.
+            reserve: None,
+            rail_outside: None,
             padding: s.padding,
             gap: s.gap,
+            opacity: s.opacity,
+            radius: s.radius,
+            margin: s.margin,
+            gradient: s.gradient,
+            cell: s.cell,
             start: de_wire(s.start),
             center: de_wire(s.center),
             end: de_wire(s.end),
             cards: s.cards.into_iter().map(FloatingCard::from).collect(),
             output: s.output,
+            // El wire (wawa) no transporta la lista de monitores excluidos todavía.
+            exclude_outputs: Vec::new(),
             tabs: s.tabs.into_iter().map(SidebarTab::from).collect(),
+            // El wire (wawa) no transporta los dientes de footer todavía; default vacío.
+            footer_tabs: Vec::new(),
+            // El wire (wawa) no transporta la fuente de dientes todavía; default.
+            tabs_source: TabsSource::default(),
             panel_width: s.panel_width,
+            // El wire (wawa) no transporta apps fijadas del dock todavía.
+            dock_pins: Vec::new(),
         }
     }
 }

@@ -100,19 +100,19 @@ fn shrink(area: Rect, anchor: Anchor, t: i32) -> Rect {
 /// Resuelve el marco sobre una pantalla. Recorre las superficies en orden: las
 /// barras sólidas se apilan reservando franja (la segunda barra del mismo borde
 /// va pegada a la primera); las `autohide`, docks y paneles flotan sin reservar.
-pub fn resolve(config: &Config, screen: Rect) -> Frame {
+pub fn resolve(config: &Config, screen: Rect, _docked_default: bool) -> Frame {
     let mut work = screen;
     let mut surfaces = Vec::with_capacity(config.surfaces.len());
 
     for (index, s) in config.surfaces.iter().enumerate() {
+        // Barra apagada: no se materializa ni reserva franja.
+        if !s.enabled {
+            continue;
+        }
         let t = s.thickness as i32;
         let (rect, reserva) = match s.kind {
-            // Una barra y el rail de un sidebar reservan igual: su grosor pegado
-            // al borde, salvo que sean autohide (entonces flotan sin reservar).
-            // El panel que despliega un diente del sidebar no es parte de
-            // `resolve` —flota sobre el área de trabajo como un drawer de
-            // launcher, lo maneja el frontend—.
-            SurfaceKind::Bar | SurfaceKind::Sidebar => {
+            // Una barra reserva su grosor pegado al borde (salvo autohide).
+            SurfaceKind::Bar => {
                 let r = strip(work, s.anchor, t);
                 if s.autohide {
                     (r, false)
@@ -121,10 +121,28 @@ pub fn resolve(config: &Config, screen: Rect) -> Frame {
                     (r, true)
                 }
             }
+            // El RAIL (columna de dientes) reserva su franja según el eje **Ocultar**
+            // (`autohide`), NO el eje **Espacio** (`reserve`): Nunca (`!autohide`) →
+            // reserva su grosor como fixture permanente; Autoesconde → suelta la franja
+            // (el escritorio se come el espacio de los dientes). El eje `reserve`/Fijo
+            // gobierna sólo al PANEL del sidebar (su reserva de ancho al desplegarse, en
+            // el frontend). La POSICIÓN del rail (adentro/afuera) es puramente visual y
+            // NO entra en `resolve`.
+            SurfaceKind::Sidebar => {
+                let r = strip(work, s.anchor, t);
+                if !s.autohide {
+                    work = shrink(work, s.anchor, t);
+                    (r, true)
+                } else {
+                    (r, false)
+                }
+            }
             // Dock: franja pegada al borde del área actual, sin reservar.
             SurfaceKind::Dock => (strip(work, s.anchor, t), false),
             // Panel: ocupa el área libre como lienzo de sus tarjetas, sin reservar.
             SurfaceKind::Panel => (work, false),
+            // Fondo: ocupa la pantalla entera detrás de todo, sin reservar.
+            SurfaceKind::Background => (screen, false),
         };
         surfaces.push(Placed {
             index,
@@ -155,7 +173,7 @@ mod tests {
         top.thickness = 32.0;
         cfg.surfaces.push(top);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 0, 1920, 32));
         assert!(f.surfaces[0].reserva);
         // El área de trabajo arranca 32px más abajo.
@@ -170,7 +188,7 @@ mod tests {
         shell.autohide = true;
         cfg.surfaces.push(shell);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         // El rect de la barra existe, pegado al pie…
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 1080 - 40, 1920, 40));
         assert!(!f.surfaces[0].reserva);
@@ -179,14 +197,34 @@ mod tests {
     }
 
     #[test]
-    fn top_solida_mas_shell_autohide_solo_reserva_la_top() {
-        // El caso del preset: barra top sólida + shell inferior autohide.
+    fn preset_docked_default_reserva_top_y_ambos_rails() {
+        // Con `docked_default=true` (default global `sidebar_docked`): la barra de
+        // shuma (top, visible) reserva su franja; AMBOS rails reservan (siguen el
+        // global, `reserve` es None) → supeditados al desktop, siempre visibles.
         let cfg = Config::preset();
-        let f = resolve(&cfg, pantalla());
-        // top reserva 32; shell no reserva.
-        assert!(f.surfaces[0].reserva);
-        assert!(!f.surfaces[1].reserva);
-        assert_eq!(f.work_area, Rect::new(0, 32, 1920, 1048));
+        let f = resolve(&cfg, pantalla(), true);
+        assert_eq!(f.surfaces.len(), 3); // barra de shuma + 2 sidebars (sin waybar)
+        assert!(f.surfaces[0].reserva); // barra de shuma (top, no autohide) reserva
+        assert!(f.surfaces[1].reserva); // rail izq docked → reserva
+        assert!(f.surfaces[2].reserva); // rail der docked → reserva
+        let wa = f.work_area;
+        assert_eq!(wa.y, 40); // la barra de shuma (thickness 40) descuenta arriba
+        assert_eq!(wa.x, 44); // el rail izq descuenta a la izquierda
+        assert_eq!(wa.w, 1920 - 88); // ambos rails descuentan (44 + 44)
+    }
+
+    #[test]
+    fn preset_rails_reservan_por_no_autohide_ignorando_global() {
+        // La reserva del RAIL la gobierna el eje **Ocultar** (`autohide`), NO el eje
+        // **Espacio** (`reserve`/global `sidebar_docked`): como los rails del preset no
+        // autoesconden, reservan su franja aunque el global `docked_default` sea false.
+        let cfg = Config::preset();
+        let f = resolve(&cfg, pantalla(), false);
+        assert!(f.surfaces[0].reserva); // barra de shuma (top): siempre reserva
+        assert!(f.surfaces[1].reserva); // rail izq (no autohide) reserva
+        assert!(f.surfaces[2].reserva); // rail der (no autohide) reserva
+        assert_eq!(f.work_area.x, 44); // el rail izq descuenta a la izquierda
+        assert_eq!(f.work_area.w, 1920 - 88); // ambos rails descuentan
     }
 
     #[test]
@@ -199,7 +237,7 @@ mod tests {
         cfg.surfaces.push(a);
         cfg.surfaces.push(b);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 0, 1920, 24));
         // La segunda va pegada bajo la primera.
         assert_eq!(f.surfaces[1].rect, Rect::new(0, 24, 1920, 30));
@@ -213,7 +251,7 @@ mod tests {
         left.thickness = 48.0;
         cfg.surfaces.push(left);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 0, 48, 1080));
         assert_eq!(f.work_area, Rect::new(48, 0, 1920 - 48, 1080));
     }
@@ -226,7 +264,7 @@ mod tests {
             d.thickness = 64.0;
             d
         });
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 1080 - 64, 1920, 64));
         assert!(!f.surfaces[0].reserva);
         assert_eq!(f.work_area, pantalla());
@@ -244,7 +282,7 @@ mod tests {
         panel.center.push(WidgetSpec::new("ram_meter"));
         cfg.surfaces.push(panel);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[1].rect, Rect::new(0, 32, 1920, 1048));
         assert!(!f.surfaces[1].reserva);
         assert_eq!(f.work_area, Rect::new(0, 32, 1920, 1048));
@@ -257,7 +295,8 @@ mod tests {
         sb.thickness = 44.0;
         cfg.surfaces.push(sb);
 
-        let f = resolve(&cfg, pantalla());
+        // Con la decisión global «fuera» el rail reserva como una barra vertical.
+        let f = resolve(&cfg, pantalla(), true);
         // El rail toma una franja vertical fina pegada a la izquierda…
         assert_eq!(f.surfaces[0].rect, Rect::new(0, 0, 44, 1080));
         assert!(f.surfaces[0].reserva);
@@ -267,22 +306,56 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_autohide_no_reserva() {
+    fn sidebar_reserve_no_gobierna_el_rail() {
+        // El eje `reserve` (Espacio: Flota/Fijo) gobierna al PANEL, NO al rail. Un rail
+        // sin autohide reserva su franja aunque `reserve = Some(false)` (Flota): la
+        // columna de dientes se rige por Ocultar, no por Espacio.
+        let mut cfg = Config::default();
+        let mut sb = Surface::sidebar(Anchor::Right);
+        sb.thickness = 44.0;
+        sb.reserve = Some(false); // Flota (afecta al panel, no al rail)
+        cfg.surfaces.push(sb);
+
+        let f = resolve(&cfg, pantalla(), false);
+        assert!(f.surfaces[0].reserva, "rail sin autohide reserva aunque reserve=Some(false)");
+        assert_eq!(f.work_area, Rect::new(0, 0, 1920 - 44, 1080));
+    }
+
+    #[test]
+    fn sidebar_rail_autohide_no_reserva_su_franja() {
+        // El RAIL con autohide NO reserva su franja (se esconde y el escritorio la
+        // recupera), ni siquiera siendo Fijo. El panel que despliega un diente reserva
+        // su ancho aparte (dinámico, fuera de `resolve`).
         let mut cfg = Config::default();
         let mut sb = Surface::sidebar(Anchor::Right);
         sb.thickness = 44.0;
         sb.autohide = true;
+        sb.reserve = Some(true); // Fijo, pero autohide → el rail igual suelta su franja
         cfg.surfaces.push(sb);
 
-        let f = resolve(&cfg, pantalla());
+        let f = resolve(&cfg, pantalla(), false);
         assert_eq!(f.surfaces[0].rect, Rect::new(1920 - 44, 0, 44, 1080));
-        assert!(!f.surfaces[0].reserva);
+        assert!(!f.surfaces[0].reserva, "rail autohide no reserva su franja aunque sea Fijo");
         assert_eq!(f.work_area, pantalla());
     }
 
     #[test]
+    fn sidebar_rail_fijo_sin_autohide_reserva() {
+        // Fixture permanente: Fijo y sin autohide → el rail reserva su franja.
+        let mut cfg = Config::default();
+        let mut sb = Surface::sidebar(Anchor::Right);
+        sb.thickness = 44.0;
+        sb.reserve = Some(true);
+        cfg.surfaces.push(sb);
+
+        let f = resolve(&cfg, pantalla(), false);
+        assert!(f.surfaces[0].reserva, "Fijo sin autohide reserva la franja del rail");
+        assert_eq!(f.work_area, Rect::new(0, 0, 1920 - 44, 1080));
+    }
+
+    #[test]
     fn sin_superficies_el_area_es_la_pantalla() {
-        let f = resolve(&Config::default(), pantalla());
+        let f = resolve(&Config::default(), pantalla(), false);
         assert!(f.surfaces.is_empty());
         assert_eq!(f.work_area, pantalla());
     }

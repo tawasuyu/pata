@@ -29,8 +29,24 @@
 
 extern crate alloc;
 
+/// Efemérides de baja precisión (Sol/Luna) para el widget astral. Matemática
+/// pura `no_std`; el host computa el día juliano y llama.
+pub mod astro;
+/// El árbitro del **diente vivo**: a partir de señales del sistema decide qué
+/// debe mostrar un diente multifuncional (música/volumen/CPU/batería/reposo).
+/// Puro: no pinta ni toca el SO. Lo pinta el frontend.
+pub mod atencion;
 pub mod config;
 pub mod layout;
+/// Modelo puro de una **transferencia en curso** (copiar/mover archivos,
+/// descargas…): a partir de muestras de bytes hechos + reloj, computa velocidad
+/// suavizada, ETA e historial de velocidad para el sparkline. No pinta ni toca el
+/// SO — el host lo alimenta y el frontend lo dibuja. Es el cómputo **central** que
+/// convierte los avances crudos que emiten las apps (p. ej. nahual) en una vista
+/// unificada de progreso.
+pub mod progreso;
+/// `impl allichay::Configurable for Config` — vuelve el marco editable por UI.
+pub mod settings;
 pub mod widget;
 /// Espejo postcard-safe del modelo, para el cruce a wawa por akasha. Sólo con la
 /// feature `serde` (el kernel la activa; el camino TOML de Linux no lo necesita).
@@ -38,7 +54,8 @@ pub mod widget;
 pub mod wire;
 
 pub use config::{
-    Anchor, Config, FloatingCard, General, Prop, SidebarTab, Surface, SurfaceKind, WidgetSpec,
+    widget_catalog, widgets_for_surface, Anchor, Config, FloatingCard, General, Prop, SidebarTab,
+    Surface, SurfaceKind, TabsSource, WidgetCatalogEntry, WidgetSpec,
 };
 pub use layout::{resolve, Frame, Placed, Rect};
 pub use widget::{

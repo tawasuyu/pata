@@ -1,13 +1,28 @@
-# Cargo.toml raíz STANDALONE de pata — front-door sobre Llimphi.
-# Solo el código de pata; Llimphi y lo fundacional por git-dep del monorepo gioser.git.
+# Cargo.toml raíz STANDALONE de pata — front-door público.
+# GENERADO por scripts/actualizar-standalone.py desde el monorepo tawasuyu.git
+# (v0.2.0). No editar a mano: se regenera. Lo fundacional se consume por
+# git-dep al tag; sólo el código del dominio vive en este repo.
 [workspace]
 resolver = "2"
+
+# ============================================================
+# Cuadrantes — agregar a medida que se migran
+# ============================================================
 members = [
     "02_ruway/pata/pata-config",
     "02_ruway/pata/pata-core",
     "02_ruway/pata/pata-host",
     "02_ruway/pata/pata-llimphi",
+    "02_ruway/pata/pata-notify",
+    "02_ruway/pata/pata-notify-panel",
+    "02_ruway/pata/pata-notify-triage",
+    "02_ruway/pata/pata-portapapeles",
 ]
+
+# `wawa/` se excluye del workspace global porque corre en target
+# `x86_64-unknown-none` y `panic = "abort"`, incompatibles con los
+# perfiles globales. Los crates compartidos se referencian por `path`
+# cruzando la frontera.
 
 [workspace.package]
 version = "0.1.0"
@@ -19,9 +34,32 @@ publish = false
 repository = "https://git.tawasuyu.net/tawasuyu/pata"
 
 [workspace.dependencies]
-
+# === Configuración declarativa (vocabulario de esquemas) ===
+allichay = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+marca = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Telemetría local de desarrollo (stderr+panics+tracing → $XDG_STATE_HOME/tawasuyu/<dominio>/<bin>.log)
+bitacora = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# default = [] (núcleo liviano sin vello); `bake` es opt-in. Declaramos
+# default-features = false aquí para que el `default-features = false` de los
+# consumidores (splash/greeter/compositor) se honre y no quede el warning.
+mirada-fondo = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+mirada-teclado-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+mirada-teclado-widget = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # === Registro de apps / menú global ===
-app-bus = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+app-bus = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+app-iconset = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# === Centro de eventos (notificaciones + capturas + clipboard + …) ===
+willay-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+willay-checkpoint = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+willay-hilo = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+willay-store = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+willay-emit = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rag-motor = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+churay-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+churay-welcome = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+churay-welcome-runner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# === Puente de drag-and-drop compositor → app (suple winit en Wayland) ===
+drop-bridge = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # === Serialización ===
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -48,8 +86,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 # === Linux primitives (arje) ===
-nix = { version = "0.29", features = ["signal", "process", "sched", "mount", "fs", "socket", "net", "user"] }
+nix = { version = "0.29", features = ["signal", "process", "sched", "mount", "fs", "socket", "net", "user", "reboot"] }
 libc = "0.2"
+# DRM/KMS legacy (dumb buffer) para el splash nativo del arranque sin parpadeo.
+# Misma versión que reexporta smithay (mirada-compositor) — el lock ya la fija.
+drm = "0.14"
+font8x8 = { version = "0.3", default-features = false }
 
 # === IDs / Hash / Crypto ===
 ulid = { version = "1", features = ["serde"] }
@@ -63,10 +105,15 @@ argon2 = "0.5"
 rand = "0.8"
 
 # === WASM (arje) ===
-# wasmi 1.0: unifica la versión con renaser (su kernel ya corre 1.0), para
+# wasmi 1.0: unifica la versión con wawa (su kernel ya corre 1.0), para
 # que el ABI WASM del host sea idéntico en Linux y en bare-metal.
 wasmi = "1.0"
 wat = "1"
+# wasmtime 46 (Fase 1 del pipeline JS): tier 0 de puriy-js pasa de wasmi
+# (intérprete) a Wasmtime AOT (Cranelift → nativo) en Linux — quita la doble
+# interpretación de QuickJS.wasm. En wawa bare-metal el runtime es Pulley (spike
+# Q1 cerrado); mismo crate, distinto backend.
+wasmtime = "46"
 
 # === Storage / DB ===
 sled = "0.34"
@@ -81,6 +128,10 @@ bzip2 = "0.4"
 
 # === Compresión (minga multi-bundle) ===
 zstd = "0.13"
+xz2 = "0.1"
+# Contenedores adicionales del visor Archive de nahual (sólo listado).
+sevenz-rust = "0.6"
+unrar = "0.5"
 
 # === HTTP server (iniy-server) ===
 axum = "0.7"
@@ -90,7 +141,7 @@ tower = "0.5"
 instant-distance = "0.6"
 
 # === P2P (minga) ===
-libp2p = { version = "0.56", features = ["tokio", "tcp", "noise", "yamux", "macros", "kad", "identify", "relay", "dcutr", "autonat", "mdns"] }
+libp2p = { version = "0.56", features = ["tokio", "tcp", "dns", "noise", "yamux", "macros", "kad", "identify", "relay", "dcutr", "autonat", "mdns"] }
 libp2p-stream = "=0.4.0-alpha"
 libp2p-allow-block-list = "0.6"
 
@@ -105,7 +156,11 @@ libm = "0.2"
 midly = "0.5"
 
 # === Code parsing (minga) ===
-arboard = "3"
+# `wayland-data-control` trae el backend wl-clipboard-rs: bajo mirada (Wayland
+# propio, sin Xwayland para apps nativas) arboard-x11 fallaba a no-op silencioso
+# y el clipboard de los text-editor quedaba muerto. Con la feature habla
+# zwlr_data_control_manager_v1 (que mirada expone) y cae a X11 si no hay Wayland.
+arboard = { version = "3", features = ["wayland-data-control"] }
 ropey = "1.6"
 tree-sitter = "0.24"
 tree-sitter-rust = "0.23"
@@ -124,7 +179,19 @@ petgraph = "0.6"
 # default-features = false: nos quedamos con PNG + JPEG + WebP (lossless).
 # tullpu-render exporta a las tres; AVIF/TIFF/… los habilitamos si una app
 # los pide específicamente.
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+# Decoders puro-Rust baratos; avif queda fuera (arrastra dav1d/rav1e).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "ico", "tiff", "tga", "qoi"] }
+# ONNX Runtime para los proveedores de píxel reales (pixel-verbo-onnx: segmentación
+# u2net/isnet, inpaint, restyle…). `download-binaries` (default) baja el runtime nativo
+# solo; ya lo arrastraba fastembed (rimay-verbo) transitivo — aquí lo declaramos directo.
+ort = "2.0.0-rc.9"
+
+# Rasterizador vectorial CPU (relleno/trazo anti-aliased) para capas vectoriales de tullpu.
+tiny-skia = "0.11"
+# Booleanos de polígonos robustos (union/intersection/difference/xor) para el
+# clipper vectorial de tullpu — restar/intersecar paths que se solapan
+# parcialmente, que la regla de relleno no expresa. Ya estaba en el lock.
+geo = "0.28"
 
 # === FUSE (minga-vfs) ===
 # default-features = false: prescinde de pkg-config/libfuse-dev en build.
@@ -146,91 +213,164 @@ tempfile = "3"
 
 # === Llimphi (motor gráfico soberano) ===
 # wgpu sobre Vulkan/Metal/DX12, winit para ventana en dev Linux.
-# raw-window-handle 0.6 alinea winit 0.30 con wgpu 24.
-# vello 0.5 = rasterizador vectorial sobre wgpu 24.
+# raw-window-handle 0.6 alinea winit 0.30 con wgpu 27.
+# vello 0.7 = rasterizador vectorial sobre wgpu 27 (renderer GPU "wgpu" + opt-in "hybrid" CPU+GPU).
 # taffy 0.9 = motor Flexbox/Grid puro Rust (ya pulled por transitivos, lo alineamos).
-# parley 0.2 = shaping/layout de texto compatible con peniko 0.4 (que vello 0.5 expone).
-wgpu = "24"
+# parley 0.6 = shaping/layout de texto compatible con peniko 0.6 (que vello 0.7 expone).
+wgpu = "27"
 winit = "0.30"
 raw-window-handle = "0.6"
 pollster = "0.4"
-vello = "0.5"
+vello = "0.7"
+# Renderer hybrid CPU+GPU sin compute shaders (mejor compat WebGL2/Adreno viejas).
+# Opt-in; el renderer "wgpu" sigue siendo el default.
+vello_hybrid = "0.0.9"
+# foreign-lottie = fork vendorizado de velato 0.9 (Lottie → vello::Scene),
+# completado para no paniquear ante features no soportadas. Lo consume
+# llimphi-lottie. Ver shared/foreign-lottie.
+foreign-lottie = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Árbol de accesibilidad para lectores de pantalla (NVDA/VoiceOver/Orca/TalkBack).
+# Lo consume el runtime de Llimphi (iter 2/3 del plan AccessKit); el modelo
+# `SemanticsSpec` del compositor es independiente de estas crates.
+accesskit = "0.24"
+accesskit_winit = "0.33"
 taffy = "0.9"
 # parley = shaping completo (bidi, ligatures, fallback CJK/emoji vía fontique, line break).
-parley = "0.4"
+parley = "0.6"
 # Bucle Elm (input→update→view→layout→raster→present). Lo consumen las apps.
-llimphi-ui = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-ui = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Tier 3 — apps WASM con UI Llimphi real. El guest pinta un WireNode (IR
+# serializable), el host (runner) lo materializa en View<Msg> y rebota los
+# eventos al update del guest. SDK = lado guest, runner = lado host.
+llimphi-wire-view = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-wasm-app-sdk = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-wasm-runner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Núcleo puro de distribución (CAS + verificación + resolve), SIN runner/GPU.
+llimphi-wasm-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Cara con baterías: re-exporta core + puente al runner para correr la app.
+llimphi-wasm-dist = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-wasm-open = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-wasm-registry = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-wasm-wasi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Transporte P2P del bytecode por hash sobre BrahmanNet (card-net).
+llimphi-wasm-net = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-3d = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Runner wlr-layer-shell: corre un `App` de Llimphi como barra anclada a un
+# borde (no como ventana), reusando la plumbing sctk+wgpu que pata probó.
+llimphi-layer = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Paleta semántica compartida por las apps y los widgets.
-llimphi-theme = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-theme = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Tweens y helpers de animación sobre el bucle Elm.
-llimphi-motion = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-motion = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Máquina de estados de animación (estilo Rive) clip-agnóstica. Núcleo puro;
+# el render lo cablea el consumidor (llimphi-lottie). Escalón sobre el playback.
+llimphi-anim = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Studio de animación «rive»: además del editor (bin), expone como lib los
+# documentos serializables (Doc + RigDoc + Project) que carga mirada-fondo.
+llimphi-anim-studio = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Render de mallas deformables (skel::Mesh) a vello Scene: vectorial y texturizada.
+llimphi-mesh = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Iconos vectoriales (BezPath en grid 24×24) compartidos por todas las apps.
-llimphi-icons = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-icons = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Puente fino vello_svg → Llimphi para SVG arbitrario (íconos .desktop, logos).
+llimphi-svg = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Puente fino velato (Lottie) → Llimphi para animación vectorial autorada (.json).
+llimphi-lottie = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-image = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Decodificador de protocolos de gráficos de terminal (kitty/sixel) → RGBA.
+llimphi-term-graphics = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Widgets reusables sobre llimphi-ui — uno por crate.
-llimphi-widget-app-header = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-banner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-button = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-clipboard = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-context-menu = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-edit-menu = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-menubar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-list = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-grid = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-slider = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-scroll = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-splitter = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-stat-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-tabs = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-command-palette = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-diff-viewer = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-fif = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-file-picker = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-bookmarks = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-mini-map = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-shuma-term = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-module-symbol-outline = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-plugin-host = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-theme-switcher = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-text-area = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-text-editor-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-text-editor = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-text-editor-lsp = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-text-input = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-tiled = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-nodegraph = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-tree = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-navigator = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-widget-app-header = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-banner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-button = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-rive-button = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-clipboard = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-context-menu = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-edit-menu = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-menubar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-list = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-grid = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-table = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-color-picker = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-slider = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-scroll = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-lazy-list = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-splitter = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-stat-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-tabs = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-allichay = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-command-palette = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-diff-viewer = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-fif = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-file-picker = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-bookmarks = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-mini-map = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-shuma-term = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-module-symbol-outline = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-plugin-host = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-theme-switcher = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-text-area = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-text-editor-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-text-editor = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-text-editor-lsp = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-text-input = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-tiled = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-nodegraph = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-tree = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+grafo-nav = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-navigator = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-detail-table = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-select = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-terminal = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Sello vectorial wawa (rombo + W implícita + Merkle Core).
-llimphi-widget-wawa-mark = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-widget-wawa-mark = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Widgets de elegancia transversal (tooltip, spinner, progress, toast,
 # modal, empty, status-bar, shortcuts-help, splash).
-llimphi-widget-tooltip = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-spinner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-progress = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-toast = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-modal = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-empty = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-status-bar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-shortcuts-help = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-timeline = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-splash = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-widget-tooltip = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-spinner = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-progress = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-toast = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-modal = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-empty = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-status-bar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-shortcuts-help = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-timeline = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-transport = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-waveform = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-splash = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Controles de formulario y signaling (switch, segmented, breadcrumb,
 # badge, avatar, skeleton, field).
-llimphi-widget-switch = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-segmented = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-dock-rail = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-breadcrumb = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-badge = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-avatar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-skeleton = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-field = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-widget-switch = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-segmented = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-rag-sidebar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-dock-rail = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-toolbar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-breadcrumb = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-badge = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-avatar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-skeleton = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-field = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Firma visual transversal (gradient sutil + hairline accent).
-llimphi-widget-panel = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-widget-panes = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-llimphi-workspace = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-widget-panel = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-panes = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# Widgets Flutter-like — composición sobre primitivas Tier 1/3 ya
+# expuestas (sombra, gradient, animated, ripple).
+llimphi-widget-chip = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-fab = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-wrap = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-range-slider = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-calendar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-fitted-box = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-carousel = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-rating = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-gauge = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-scaffold = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-hero = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-widget-router = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+llimphi-workspace = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 # Abstracción Selector — host (paths) + wawa (khipus).
-llimphi-module-selector = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+llimphi-module-selector = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 
 # === Filesystem helpers ===
 directories = "5"
@@ -264,7 +404,7 @@ hex = "0.4"
 portable-pty = "0.9"
 vt100 = "0.16"
 
-# === WASM web (gioser) ===
+# === WASM web (tawasuyu) ===
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
@@ -289,61 +429,92 @@ ttf-parser = "0.25"
 # ============================================================
 # Intra-workspace deps de nahual (referenciadas por workspace = true)
 # ============================================================
-nahual-text-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-image-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-thumb-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-gallery-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-video-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-card-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-audio-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-tree-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-hex-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-table-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-markdown-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-archive-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-font-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-map-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-geo-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-viewer-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-nahual-file-explorer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+nahual-text-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-image-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-pdf-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-cbz-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-thumb-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-gallery-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-video-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-card-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-audio-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+media-module = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-module = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-icon-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-icon-cli = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-icon-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-icon-llm = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+foreign-svg = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+foreign-pdf = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-render = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-render-gpu = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-ops = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tullpu-paint = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-tree-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-hex-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-svg-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-sheet-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-dbf-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-table-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-markdown-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-pluma-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-cotejo-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-deck-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-archive-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-font-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-map-viewer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-geo-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-geo-voxel = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-iconos = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-viewer-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-file-explorer-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 
 # ============================================================
 # Intra-workspace deps de pineal (módulo de gráficos)
 # ============================================================
-pineal-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-render = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-cartesian = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-stream = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-mesh = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-financial = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-polar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-heatmap = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-treemap = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-flow = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-phosphor = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-export = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-hexbin = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-contour = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal-bars = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pineal = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+pineal-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-render = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-cartesian = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-stream = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-mesh = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-financial = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-polar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-heatmap = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-treemap = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-flow = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-phosphor = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-export = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-hexbin = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-contour = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal-bars = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pineal = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 
 # ============================================================
 # Intra-workspace deps de iniy (laboratorio semántico de creencias)
 # ============================================================
-iniy-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-ingest = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-extract = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-nli = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-nli-llm = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-graph = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-iniy-store = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+iniy-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-evidencia = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-derive = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-emisores = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-cache = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-daemon = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-ingest = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-extract = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-nli = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-nli-llm = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-graph = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+iniy-store = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+# la física de decaimiento de khipu la importa iniy-derive (SDD iniy §3)
+khipu-gravity = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 
 # === auto: declarados por crates internos faltantes ===
-cosmos-coords = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-cosmos-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-cosmos-ephemeris = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-cosmos-time = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-cosmos-wcs = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+cosmos-coords = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-cities = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-ephemeris = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-time = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-wcs = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
 
 # === auto: externas de eternal ===
 celestial-eop-data = { version = "0.1"}
@@ -351,6 +522,7 @@ approx = "0.5"
 byteorder = "1.5"
 cc = "1.0"
 chrono = "0.4"
+chrono-tz = "0.10"
 crc32fast = "1.4"
 criterion = "0.5"
 csv = "1.4"
@@ -359,6 +531,11 @@ glob = "0.3"
 indicatif = "0.18"
 lz4_flex = "0.11"
 memmap2 = "0.9"
+# Cliente Wayland (lado cliente) — lo usa hapiy para hablar zwlr_screencopy
+# contra mirada (u otro compositor wlroots) y capturar la pantalla.
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-protocols-misc = { version = "0.3", features = ["client"] }
 mockito = "1.0"
 ndarray = "0.15"
 num-traits = "0.2"
@@ -392,6 +569,9 @@ markup5ever_rcdom = "0.39"
 cssparser = "0.35"
 url = "2"
 ureq = { version = "2", default-features = false, features = ["tls"] }
+# Charset de la web real: no todo es UTF-8 (google.com sirve ISO-8859-1).
+# Ya venía transitivo por el stack de Servo — aquí se hace explícito.
+encoding_rs = "0.8"
 
 # === takiy-synth (SoundFont MIDI) ===
 # rustysynth = sintetizador SF2 puro Rust, MIT. Reemplaza el oscilador
@@ -420,7 +600,7 @@ hound = "3.5"
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "flac", "vorbis", "ogg"] }
 
 # === media-source-opus (decoder Opus NATIVO puro-Rust) ===
-# Opus es el formato de audio nativo de gioser (par del video AV1). ogg
+# Opus es el formato de audio nativo de tawasuyu (par del video AV1). ogg
 # demuxea las páginas Ogg; opus-wave es un port puro-Rust de libopus
 # (SILK+CELT, sin C ni FFI) — par del rav1d del lado video.
 ogg = "0.9"
@@ -431,9 +611,79 @@ opus-wave = "3"
 # paquetes de los tracks V_AV1 y A_OPUS para alimentar a media-source-av1
 # y media-source-opus — un .webm AV1+Opus se reproduce 100% nativo.
 matroska-demuxer = "0.7"
-# === git-deps al monorepo (agregados por la extracción) ===
-card-sidecar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-chasqui-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-pluma-llm = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-shuma-exec = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
-shuma-line = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.1.0" }
+
+# === Perfil `dist`: binarios de reparto livianos (equipos chicos / poca RAM) ===
+# Hereda de `release` pero prioriza HUELLA sobre tiempo de compilación: LTO thin
+# (poda código muerto entre crates), un solo codegen-unit (mejor inlining/DCE) y
+# `strip` de símbolos. Reduce el tamaño en disco Y el segmento de código mapeado
+# en RAM de cada binario (mirada, pata, apps Llimphi). No toca `cargo build
+# --release` de iteración diaria; se usa sólo al empaquetar:
+#   cargo build --profile dist -p mirada-compositor -p pata-host …
+# `panic = "unwind"` se mantiene a propósito: mirada-plugin-host aísla plugins
+# con `catch_unwind`, así que `abort` rompería el sandbox.
+# === Crates del monorepo consumidos por git-dep (pin del tag) ===
+agora-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+agora-graph = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+agora-petnames = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+agora-store = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+arje-applaunch = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+card-net = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+card-sidecar = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+chasqui-card = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-astrology = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-eclipses = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-sky = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-skywatch = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-sundial = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cosmos-tides = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+cuentas = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+khipu-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+matilda-apply = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+matilda-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+matilda-discover = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+matilda-linker = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+matilda-plan = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+mirada-toplevel-icon-proto = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+nahual-module = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pacha-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+paloma-rag = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pluma-llm = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+pluma-llm-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-localize = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-verbo = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-verbo-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-verbo-mock = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-voz = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+rimay-voz-host = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+sandokan-arje-engine = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+sandokan-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+sandokan-lifecycle = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+sandokan-monitor-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+shuma-config = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+shuma-module = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+shuma-module-shell = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+shuma-shell-llimphi = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+shuma-voz-ui = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+takiy-ambiente = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+takiy-genesis = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+takiy-playback = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+takiy-synth = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tampu-core = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tampu-store = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+tejido = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+wawa-config = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+willay-rag = { git = "https://git.tawasuyu.net/tawasuyu/tawasuyu.git", tag = "v0.2.0" }
+
+[profile.dist]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"
+
+
+
+# Un solo origen para los crates del dominio: la copia local gana
+# sobre la que arrastran las git-deps del monorepo.
+[patch."https://git.tawasuyu.net/tawasuyu/tawasuyu.git"]
+pata-host = { path = "02_ruway/pata/pata-host" }

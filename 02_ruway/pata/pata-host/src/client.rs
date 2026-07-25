@@ -56,6 +56,14 @@ impl HostClient {
     pub fn update(&mut self, teeth: Vec<HostedTooth>) {
         let _ = write_frame(&mut self.write, &AppMsg::Update { teeth });
     }
+
+    /// Reporta cuál diente está **activo** (su panel desplegado sobre el canvas):
+    /// `Some(id)` para resaltarlo en el rail de pata, `None` cuando no hay panel
+    /// (puro lienzo). La app lo llama cuando togglea/cambia su panel; sin esto los
+    /// dientes hospedados van siempre inactivos.
+    pub fn set_active(&mut self, tooth: Option<u32>) {
+        let _ = write_frame(&mut self.write, &AppMsg::SetActive { tooth });
+    }
 }
 
 impl Drop for HostClient {

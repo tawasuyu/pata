@@ -22,6 +22,7 @@ use pata_core::widget::{self, ClockReading, WidgetCtx, WidgetView};
 use pata_core::{Config, Rect, Surface, SurfaceKind, WidgetSpec};
 
 fn main() -> ExitCode {
+    bitacora::abrir("pata");
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut screen = (1920_i32, 1080_i32);
     let mut config_path: Option<String> = None;
@@ -30,6 +31,21 @@ fn main() -> ExitCode {
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
+            // Exporta la BASE dura (el preset compilado) a TOML por stdout. El
+            // instalador la siembra en `/usr/share/pata/base.toml` — así el
+            // archivo de base del paquete NUNCA diverge del preset.
+            "--dump-base" => {
+                match pata_config::to_toml(&Config::preset()) {
+                    Ok(text) => {
+                        print!("{text}");
+                        return ExitCode::SUCCESS;
+                    }
+                    Err(e) => {
+                        eprintln!("no pude serializar la base: {e}");
+                        return ExitCode::FAILURE;
+                    }
+                }
+            }
             "--widgets" => mostrar_widgets = true,
             "--screen" => {
                 i += 1;
@@ -50,7 +66,7 @@ fn main() -> ExitCode {
                 }
             }
             "-h" | "--help" => {
-                println!("uso: pata [--config <ruta>] [--screen WxH] [--widgets]");
+                println!("uso: pata [--config <ruta>] [--screen WxH] [--widgets] [--dump-base]");
                 return ExitCode::SUCCESS;
             }
             other => {
@@ -79,7 +95,9 @@ fn main() -> ExitCode {
     };
 
     let (sw, sh) = screen;
-    let frame = pata_config::resolve(&cfg, Rect::new(0, 0, sw, sh));
+    // Volcado de diagnóstico con el default de `sidebar_docked` (true = los
+    // sidebars reservan su franja). El eje POSICIÓN del rail no entra en resolve.
+    let frame = pata_config::resolve(&cfg, Rect::new(0, 0, sw, sh), true);
 
     println!("pantalla: {sw}×{sh}   ·   zona horaria: {}", cfg.general.timezone);
     println!("superficies: {}", cfg.surfaces.len());
@@ -131,7 +149,7 @@ fn print_slot(nombre: &str, widgets: &[WidgetSpec], con_view: bool) {
 /// Un [`WidgetCtx`] de muestra para que `--widgets` enseñe el view-model sin
 /// muestrear el sistema real (eso es trabajo del frontend, no del inspector).
 fn ctx_muestra() -> WidgetCtx {
-    WidgetCtx {
+    let mut ctx = WidgetCtx {
         clock: ClockReading {
             year: 2026,
             month: 6,
@@ -150,7 +168,20 @@ fn ctx_muestra() -> WidgetCtx {
         brightness: 0.55,
         sun_longitude_deg: 132.0, // Leo 12°
         moon_phase: 0.5,          // llena
+        active_workspace: 2,
+        workspace_count: 4,
+        workspace_occupied: 0b0101, // escritorios 1 y 3 con ventanas
+        ..WidgetCtx::default()
+    };
+    // 8 cores de muestra con cargas escalonadas para ilustrar el racimo.
+    ctx.cpu_cores_n = 8;
+    for (i, v) in [0.15_f32, 0.30, 0.45, 0.60, 0.75, 0.50, 0.20, 0.85]
+        .iter()
+        .enumerate()
+    {
+        ctx.cpu_cores[i] = *v;
     }
+    ctx
 }
 
 /// Renderiza un [`WidgetView`] como una línea legible para el inspector.
@@ -158,14 +189,31 @@ fn render_view(v: &WidgetView) -> String {
     match v {
         WidgetView::Empty => "·".to_string(),
         WidgetView::Text(t) => format!("text  «{t}»"),
+        WidgetView::TextRich { text, tooltip, .. } => format!("text  «{text}» ↪ «{tooltip}»"),
         WidgetView::Meter {
             label,
             fraction,
             caption,
+            size,
+            orient,
         } => {
             let etiqueta = label.as_deref().unwrap_or("—");
-            format!("meter [{etiqueta}] {:.0}% «{caption}»", fraction * 100.0)
+            format!(
+                "meter [{etiqueta}] {:.0}% «{caption}» {size:?}/{orient:?}",
+                fraction * 100.0
+            )
         }
+        WidgetView::Cores { label, fractions, caption, size, orient } => {
+            let etiqueta = label.as_deref().unwrap_or("—");
+            format!(
+                "cores [{etiqueta}] n={} avg={caption} {size:?}/{orient:?}",
+                fractions.len()
+            )
+        }
+        WidgetView::Workspaces { active, count, occupied, others } => {
+            format!("workspaces {active}/{count} ocupados={occupied:#b} otros={others:#b}")
+        }
+        WidgetView::Moon { phase, name } => format!("moon  {phase:.2} «{name}»"),
         WidgetView::Placeholder(k) => format!("placeholder ⟨{k}⟩"),
     }
 }
@@ -176,6 +224,7 @@ fn kind_str(k: SurfaceKind) -> &'static str {
         SurfaceKind::Panel => "panel",
         SurfaceKind::Dock => "dock",
         SurfaceKind::Sidebar => "sidebar",
+        SurfaceKind::Background => "background",
     }
 }
 

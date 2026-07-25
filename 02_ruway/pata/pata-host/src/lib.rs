@@ -70,8 +70,56 @@ pub enum AppMsg {
     },
     /// Sus dientes cambiaron (mismo `app_id` implícito por la conexión).
     Update { teeth: Vec<HostedTooth> },
+    /// Cuál de sus dientes está **activo** ahora (su panel desplegado sobre el
+    /// canvas): `Some(id)` resalta ese diente en el rail de pata; `None` = nada
+    /// desplegado (puro lienzo). Sin este mensaje los dientes hospedados van
+    /// siempre inactivos (pata no conoce el estado interno de la app).
+    SetActive { tooth: Option<u32> },
     /// Baja explícita (también se infiere al cerrarse la conexión).
     Bye,
+    /// **Comando de shell** de un cliente que NO es una app de rail — hoy el
+    /// compositor (mirada) desde una esquina caliente. No lleva `Register`: es
+    /// un disparo suelto (conectar → un frame → cerrar). pata lo drena con
+    /// [`HostServer::take_commands`] y lo traduce a una acción de su UI.
+    Command(ShellCommand),
+}
+
+/// Comandos sueltos que un cliente externo (el compositor) le pide a pata sobre
+/// su propia UI, por el mismo socket del rail. Separado de los dientes: no toca
+/// el registro de apps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShellCommand {
+    /// Desplegar/replegar el drawer de shuma (como el hotkey / el toggle a mano).
+    /// La esquina caliente top-center de mirada lo dispara: abre el vistazo y el
+    /// mismo gesto lo cierra.
+    ToggleShuma,
+}
+
+/// La ruta del socket de pata **de un usuario concreto** (por su uid), armada
+/// SIN mirar el entorno del proceso actual: `/run/user/<uid>/pata-sidebar.sock`.
+/// La necesita quien conecta con OTRO `XDG_RUNTIME_DIR` que pata — el caso del
+/// compositor, que corre como root y pata como el usuario logueado. Si el usuario
+/// lanzó pata con `PATA_SIDEBAR_SOCKET` a medida, esta ruta no lo refleja (caso
+/// no estándar).
+pub fn user_socket_path(uid: u32) -> PathBuf {
+    PathBuf::from(format!("/run/user/{uid}")).join(SOCKET_NAME)
+}
+
+/// Cliente **one-shot** a un socket explícito: conecta, manda un [`ShellCommand`]
+/// y cierra. Es la variante cross-uid — el compositor arma la ruta del usuario
+/// con [`user_socket_path`] porque su `XDG_RUNTIME_DIR` (root) no es el de pata.
+#[cfg(unix)]
+pub fn send_command_to(path: &std::path::Path, cmd: ShellCommand) -> io::Result<()> {
+    use std::os::unix::net::UnixStream;
+    let mut stream = UnixStream::connect(path)?;
+    write_frame(&mut stream, &AppMsg::Command(cmd))
+}
+
+/// Cliente one-shot al socket derivado del **entorno propio** (mismo usuario que
+/// pata). Para cruzar de uid usa [`send_command_to`] con [`user_socket_path`].
+#[cfg(unix)]
+pub fn send_command(cmd: ShellCommand) -> io::Result<()> {
+    send_command_to(&socket_path(), cmd)
 }
 
 /// Mensaje del **shell hacia la app**.
@@ -101,6 +149,30 @@ pub fn socket_path() -> PathBuf {
         .map(PathBuf::from)
         .unwrap_or_else(std::env::temp_dir)
         .join(SOCKET_NAME)
+}
+
+/// `true` si pata está corriendo ahora (su socket existe en disco).
+pub fn shell_present() -> bool {
+    socket_path().exists()
+}
+
+/// **Decisión de delegación de sidebar** para una app: ¿debe entregarle sus
+/// dientes a pata (rail hospedado) en vez de pintar su propio sidebar?
+///
+/// Default querido (2026-06-24): **sí, cuando pata está corriendo** —así hay una
+/// sola barra de rails en toda la pantalla (la de pata) que absorbe el sidebar
+/// de la app activa, sin duplicar. Si pata no está (app standalone), `false`: la
+/// app pinta su propio sidebar como siempre. `env_var` (p.ej.
+/// `COSMOS_DELEGATE_SIDEBAR`) es un **opt-out** explícito: `=0`/`false`/`no`
+/// fuerza no-delegar aunque pata esté.
+pub fn delegate_sidebar_default(env_var: &str) -> bool {
+    if matches!(
+        std::env::var(env_var).as_deref(),
+        Ok("0") | Ok("false") | Ok("no")
+    ) {
+        return false;
+    }
+    shell_present()
 }
 
 fn postcard_err(e: postcard::Error) -> io::Error {
@@ -136,6 +208,15 @@ mod client;
 #[cfg(unix)]
 pub use client::HostClient;
 
+// pata es un marco Linux/Wayland: no hay rail hospedado fuera de unix. El stub
+// mantiene la API ([`HostClient::connect`] → siempre `None`) para que las apps
+// que delegan su sidebar (p. ej. cosmos) compilen en Windows y sigan con su
+// propio rail.
+#[cfg(not(unix))]
+mod client_stub;
+#[cfg(not(unix))]
+pub use client_stub::HostClient;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,13 +224,29 @@ mod tests {
     #[test]
     fn wire_roundtrip_appmsg() {
         let m = AppMsg::Register {
-            app_id: "gioser.cosmos".into(),
+            app_id: "tawasuyu.cosmos".into(),
             title: "Cosmos".into(),
             teeth: vec![HostedTooth::new(1, "folder", "Árbol"), HostedTooth::new(2, "tools", "Herramientas")],
         };
         let bytes = postcard::to_stdvec(&m).unwrap();
         let back: AppMsg = postcard::from_bytes(&bytes).unwrap();
         assert_eq!(back, m);
+    }
+
+    #[test]
+    fn wire_roundtrip_command() {
+        let m = AppMsg::Command(ShellCommand::ToggleShuma);
+        let bytes = postcard::to_stdvec(&m).unwrap();
+        assert_eq!(postcard::from_bytes::<AppMsg>(&bytes).unwrap(), m);
+    }
+
+    #[test]
+    fn wire_roundtrip_setactive() {
+        for tooth in [Some(3u32), None] {
+            let m = AppMsg::SetActive { tooth };
+            let bytes = postcard::to_stdvec(&m).unwrap();
+            assert_eq!(postcard::from_bytes::<AppMsg>(&bytes).unwrap(), m);
+        }
     }
 
     #[test]

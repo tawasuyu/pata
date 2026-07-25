@@ -1,0 +1,31 @@
+[package]
+name = "pata-notify-triage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "Capa de triage semántico/IA sobre el historial de pata-notify: agrupa notificaciones por similitud coseno (embeddings de rimay-verbo), las clasifica con reglas semánticas (priorizar/silenciar/sugerir por significado, no regex), y resume cada grupo con un LLM (pluma-llm). Lee el historial por D-Bus — no toca el daemon. Lib + CLI que imprime el digest como texto."
+
+[[bin]]
+name = "pata-notify-triage"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+bitacora = { workspace = true }
+pata-notify = { path = "../pata-notify" }
+rimay-verbo = { workspace = true }
+rimay-verbo-core = { workspace = true }
+pluma-llm = { workspace = true }
+pluma-llm-core = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+rimay-verbo-mock = { workspace = true }

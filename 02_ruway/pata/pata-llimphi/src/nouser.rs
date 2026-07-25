@@ -92,9 +92,15 @@ fn file_label(path: &str) -> String {
 /// Estado del sidebar navegador. Vive en el `Model` del frontend; el widget es
 /// render-only y lo consulta cada `view`.
 pub struct NavState {
-    /// Diente desplegado: `(surface_idx, tab_idx)`. `None` = rail colapsado, sin
-    /// panel.
-    pub open: Option<(usize, usize)>,
+    /// Diente desplegado **por monitor**: conector (`"DP-1"`) → `(surface_idx,
+    /// tab_idx)`. Cada monitor expande lo suyo, independiente de los demás —
+    /// sin entrada = rail colapsado en ese monitor. El backend winit (una sola
+    /// pantalla) usa la clave `""`.
+    pub open: HashMap<String, (usize, usize)>,
+    /// Diente SELECCIONADO (resaltado en el rail) por monitor, independiente de
+    /// si su panel está desplegado. En modo un-paso sigue a [`Self::open`]; en
+    /// modo dos-pasos el primer click lo fija sin abrir el panel.
+    pub active: HashMap<String, (usize, usize)>,
     /// Modo de visualización activo (compartido entre dientes).
     pub mode: NavMode,
     /// Nodo seleccionado (resaltado).
@@ -103,6 +109,21 @@ pub struct NavState {
     pub expanded: HashSet<NavId>,
     /// Offset de scroll del panel (px).
     pub scroll: f32,
+    /// Texto del **buscador jerárquico** del sidebar (vacío = idle). Localiza
+    /// contenido en el panel activo (resalta nodos/dientes que matchean). Es la
+    /// consulta que "las apps reciben" del marco.
+    pub search: String,
+    /// El buscador tiene el foco de teclado (las teclas van a `search`, no al
+    /// panel). Lo prende un click en la caja de búsqueda; Esc lo suelta/limpia.
+    pub search_focused: bool,
+    /// El **popover multiswitch** del control mutable está desplegado (opciones
+    /// excluyentes de disposición del sidebar agrupadas).
+    pub control_open: bool,
+    /// De QUÉ sidebar (`si`) son las opciones abiertas. Lo fija el toggle: así,
+    /// aunque no haya ningún diente desplegado, el drawer de ESE sidebar se
+    /// muestra para hostear la card de opciones como ventana propia (no clipeada
+    /// por el rail fino). `None` cuando `control_open` es `false`.
+    pub control_si: Option<usize>,
     /// El bosque a pintar (Mónadas como raíces, archivos como hijos).
     pub roots: Vec<NavNode>,
     /// Qué representa cada [`NavId`] (para resolver/abrir).
@@ -122,16 +143,50 @@ pub struct NavState {
     /// Apps nativas que ofrece el menú abierto: `(app_id, label)`. El render las
     /// pinta como filas "Abrir con <label>"; siempre se les suma "el sistema".
     pub menu_options: Vec<(String, String)>,
+    /// **Instancia seleccionada** del perfil `pacha` en el panel del diente perfil
+    /// (el tab que se está viendo). `None` = seguir la instancia activa. Es sólo
+    /// UI: no activa el contexto (eso es [`crate::Msg::SwitchPacha`]).
+    pub pacha_sel: Option<String>,
+    /// **Menú contextual de una ventana** (taskbar del diente-escritorio) abierto:
+    /// el popup flotante anclado al cursor con las acciones de taskbar (traer al
+    /// frente, cerrar, minimizar, mover a escritorio…). `None` = sin menú. Vive en
+    /// la surface del drawer (como el popover de disposición), por eso guarda el
+    /// `si` del sidebar y la posición de anclaje. Ver [`WinMenu`].
+    pub win_menu: Option<WinMenu>,
+}
+
+/// Estado del **menú contextual de una ventana** abierto sobre una fila del
+/// taskbar de un diente-escritorio. Se pinta como popup flotante en la surface
+/// del drawer, anclado donde se hizo clic-derecho (coords de la surface del
+/// drawer, que [`crate::View::on_right_click_screen`] entrega).
+#[derive(Clone, Debug, PartialEq)]
+pub struct WinMenu {
+    /// Sidebar (`si`) en cuyo drawer vive el menú — para restaurar su input-region.
+    pub si: usize,
+    /// Escritorio cuyo taskbar disparó el menú (para «Cerrar las demás»).
+    pub ws: u8,
+    /// Ventana objetivo del menú (id de mirada).
+    pub win_id: u32,
+    /// Título de la ventana (cabecera del menú).
+    pub title: String,
+    /// Ancla del popup en coords de la surface del drawer (x, y del cursor).
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Default for NavState {
     fn default() -> Self {
         Self {
-            open: None,
+            open: HashMap::new(),
+            active: HashMap::new(),
             mode: NavMode::Tree,
             selected: None,
             expanded: HashSet::new(),
             scroll: 0.0,
+            search: String::new(),
+            search_focused: false,
+            control_open: false,
+            control_si: None,
             roots: Vec::new(),
             targets: HashMap::new(),
             monads: Vec::new(),
@@ -140,26 +195,133 @@ impl Default for NavState {
             error: None,
             menu: None,
             menu_options: Vec::new(),
+            pacha_sel: None,
+            win_menu: None,
         }
     }
 }
 
 impl NavState {
-    /// `true` si el diente `(si, ti)` está desplegado ahora.
-    pub fn is_open(&self, si: usize, ti: usize) -> bool {
-        self.open == Some((si, ti))
+    /// El diente desplegado en el monitor `out`, si hay.
+    pub fn open_en(&self, out: &str) -> Option<(usize, usize)> {
+        self.open.get(out).copied()
     }
 
-    /// Activa/repliega el diente `(si, ti)`: si ya estaba abierto lo cierra, si
-    /// no, lo abre (cerrando cualquier otro).
-    pub fn toggle_tab(&mut self, si: usize, ti: usize) {
+    /// El diente seleccionado en el monitor `out`, si hay.
+    pub fn active_en(&self, out: &str) -> Option<(usize, usize)> {
+        self.active.get(out).copied()
+    }
+
+    /// `true` si el diente `(si, ti)` está desplegado en **algún** monitor.
+    pub fn is_open(&self, si: usize, ti: usize) -> bool {
+        self.open.values().any(|&v| v == (si, ti))
+    }
+
+    /// `true` si el diente `(si, ti)` está SELECCIONADO en algún monitor.
+    /// En modo un-paso coincide con [`Self::is_open`]; en modo dos-pasos puede
+    /// estar seleccionado con el panel replegado (primer click).
+    pub fn is_active(&self, si: usize, ti: usize) -> bool {
+        self.active.values().any(|&v| v == (si, ti))
+    }
+
+    /// Activa/repliega el diente `(si, ti)` del monitor `out` en modo **un
+    /// paso**: si ya estaba abierto ahí lo cierra, si no, lo abre (cerrando
+    /// cualquier otro de ESE monitor — los demás monitores no se tocan).
+    /// `active` sigue a `open`.
+    pub fn toggle_tab(&mut self, out: &str, si: usize, ti: usize) {
         self.close_menu(); // un cambio de diente descarta el menú "Abrir con…"
-        if self.open == Some((si, ti)) {
-            self.open = None;
+        if self.open.get(out) == Some(&(si, ti)) {
+            self.open.remove(out);
+            self.active.remove(out);
         } else {
-            self.open = Some((si, ti));
+            self.open.insert(out.to_string(), (si, ti));
+            self.active.insert(out.to_string(), (si, ti));
             self.scroll = 0.0;
         }
+    }
+
+    /// Activa el diente `(si, ti)` del monitor `out` respetando el modo **dos
+    /// pasos**: con `dos_pasos = false` cae a [`Self::toggle_tab`] (un click
+    /// abre). Con `dos_pasos = true`, el primer click sólo SELECCIONA el diente
+    /// (sin desplegar el panel); un segundo click —ya seleccionado—
+    /// despliega/repliega su panel. Así el diente funciona "como botón que sólo
+    /// expande al tocarlo estando activo, y a la primera sólo lo activa".
+    pub fn activate_tab(&mut self, out: &str, si: usize, ti: usize, dos_pasos: bool) {
+        if !dos_pasos {
+            self.toggle_tab(out, si, ti);
+            return;
+        }
+        self.close_menu();
+        if self.active.get(out) != Some(&(si, ti)) {
+            // Primer paso: seleccionar sin desplegar.
+            self.active.insert(out.to_string(), (si, ti));
+            self.open.remove(out);
+            self.scroll = 0.0;
+        } else if self.open.get(out) == Some(&(si, ti)) {
+            // Segundo paso, ya desplegado: replegar (sigue seleccionado).
+            self.open.remove(out);
+        } else {
+            // Segundo paso, replegado: desplegar.
+            self.open.insert(out.to_string(), (si, ti));
+            self.scroll = 0.0;
+        }
+    }
+
+    /// Localiza jerárquicamente el texto del buscador ([`Self::search`]) en el
+    /// bosque: expande los ancestros de todo nodo cuyo label lo contiene
+    /// (case-insensitive) y **selecciona el primero** para resaltarlo. Con
+    /// búsqueda vacía no toca nada. La llaman los handlers al cambiar `search`.
+    pub fn apply_search(&mut self) {
+        let q = self.search.trim().to_lowercase();
+        if q.is_empty() {
+            return;
+        }
+        fn walk(
+            node: &NavNode,
+            q: &str,
+            path: &mut Vec<NavId>,
+            expand: &mut HashSet<NavId>,
+            first: &mut Option<NavId>,
+        ) {
+            if node.label.to_lowercase().contains(q) {
+                if first.is_none() {
+                    *first = Some(node.id);
+                }
+                for a in path.iter() {
+                    expand.insert(*a);
+                }
+            }
+            path.push(node.id);
+            for c in &node.children {
+                walk(c, q, path, expand, first);
+            }
+            path.pop();
+        }
+        let mut expand = HashSet::new();
+        let mut first = None;
+        let mut path = Vec::new();
+        for r in &self.roots {
+            walk(r, &q, &mut path, &mut expand, &mut first);
+        }
+        for id in expand {
+            self.expanded.insert(id);
+        }
+        if first.is_some() {
+            self.selected = first;
+        }
+    }
+
+    /// `true` si algún nodo del bosque matchea el buscador — para resaltar el
+    /// diente que contiene coincidencias. Con búsqueda vacía es `false`.
+    pub fn search_hits_roots(&self) -> bool {
+        let q = self.search.trim().to_lowercase();
+        if q.is_empty() {
+            return false;
+        }
+        fn any(node: &NavNode, q: &str) -> bool {
+            node.label.to_lowercase().contains(q) || node.children.iter().any(|c| any(c, q))
+        }
+        self.roots.iter().any(|r| any(r, &q))
     }
 
     /// La ruta del archivo que representa `id`, si es un archivo. `None` para
@@ -178,10 +340,12 @@ impl NavState {
         self.menu_options = options;
     }
 
-    /// Cierra el menú "Abrir con…".
+    /// Cierra el menú "Abrir con…" y también el menú contextual de ventana (un
+    /// cambio de diente debe descartar cualquier popup contextual pendiente).
     pub fn close_menu(&mut self) {
         self.menu = None;
         self.menu_options.clear();
+        self.win_menu = None;
     }
 
     /// Si `id` es una Mónada todavía sin miembros resueltos, devuelve su id para
@@ -441,14 +605,81 @@ mod tests {
     fn toggle_tab_abre_y_cierra() {
         let mut st = NavState::default();
         assert!(!st.is_open(0, 0));
-        st.toggle_tab(0, 0);
+        st.toggle_tab("", 0, 0);
         assert!(st.is_open(0, 0));
+        assert!(st.is_active(0, 0)); // un-paso: active sigue a open
         // Abrir otro diente cierra el anterior.
-        st.toggle_tab(0, 1);
+        st.toggle_tab("", 0, 1);
         assert!(st.is_open(0, 1));
         assert!(!st.is_open(0, 0));
-        // Re-clic en el abierto lo cierra.
-        st.toggle_tab(0, 1);
-        assert_eq!(st.open, None);
+        // Re-clic en el abierto lo cierra (y deselecciona).
+        st.toggle_tab("", 0, 1);
+        assert!(st.open.is_empty());
+        assert!(st.active.is_empty());
+    }
+
+    #[test]
+    fn activate_tab_un_paso_equivale_a_toggle() {
+        let mut st = NavState::default();
+        st.activate_tab("", 0, 0, false);
+        assert!(st.is_open(0, 0) && st.is_active(0, 0));
+        st.activate_tab("", 0, 0, false);
+        assert!(st.open.is_empty());
+    }
+
+    #[test]
+    fn activate_tab_dos_pasos_primero_selecciona_luego_despliega() {
+        let mut st = NavState::default();
+        // Primer click: SELECCIONA sin desplegar.
+        st.activate_tab("", 0, 0, true);
+        assert!(st.is_active(0, 0));
+        assert!(!st.is_open(0, 0), "primer paso no despliega el panel");
+        // Segundo click (ya activo): despliega.
+        st.activate_tab("", 0, 0, true);
+        assert!(st.is_open(0, 0));
+        // Tercer click (activo y desplegado): repliega, sigue seleccionado.
+        st.activate_tab("", 0, 0, true);
+        assert!(!st.is_open(0, 0));
+        assert!(st.is_active(0, 0), "replegar no deselecciona en dos-pasos");
+        // Click en OTRO diente: sólo lo selecciona (no despliega), y el anterior
+        // deja de estar activo.
+        st.activate_tab("", 0, 1, true);
+        assert!(st.is_active(0, 1) && !st.is_open(0, 1));
+        assert!(!st.is_active(0, 0));
+    }
+
+    #[test]
+    fn apply_search_expande_ancestros_y_selecciona_el_primero() {
+        let mut st = NavState::default();
+        st.roots = vec![NavNode::branch(
+            1,
+            "src",
+            NavKind::Monad,
+            vec![
+                NavNode::leaf(11, "lib.rs", NavKind::File),
+                NavNode::leaf(12, "main.rs", NavKind::File),
+            ],
+        )];
+        // Sin búsqueda: no toca nada.
+        st.apply_search();
+        assert!(st.expanded.is_empty());
+        assert_eq!(st.selected, None);
+        // Buscar "main": expande el ancestro (1) y selecciona el match (12).
+        st.search = "main".into();
+        st.apply_search();
+        assert!(st.expanded.contains(&1), "expande el ancestro del match");
+        assert_eq!(st.selected, Some(12));
+        assert!(st.search_hits_roots());
+    }
+
+    #[test]
+    fn search_hits_roots_es_case_insensitive_y_vacio_no_matchea() {
+        let mut st = NavState::default();
+        st.roots = vec![NavNode::leaf(1, "README", NavKind::File)];
+        assert!(!st.search_hits_roots(), "búsqueda vacía no matchea");
+        st.search = "readme".into();
+        assert!(st.search_hits_roots());
+        st.search = "zzz".into();
+        assert!(!st.search_hits_roots());
     }
 }

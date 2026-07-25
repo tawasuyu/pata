@@ -1,12 +1,14 @@
 # SDD — `pata`, el marco del escritorio
 
-> Estado: **Fase 8b** (layer-shell sobre wlroots: barras, Quake, clicks,
-> `window_list`). Este documento es la fuente autoritativa de qué es `pata` y
-> dónde termina, por encima de README.
+> Estado: **Fase 15** (applet de red: icono de señal Wi-Fi/Ethernet + popup de
+> redes vía nmcli; sobre la Fase 14 — workspace switcher: escritorios virtuales
+> clickeables en la barra, vía mirada-ctl, y la Fase 13 — barras embellecidas +
+> widgets interactivos). Este documento es la fuente autoritativa de qué es
+> `pata` y dónde termina, por encima de README.
 
 ## 0. El problema que resuelve
 
-El escritorio de gioser tenía el concepto de "launcher" **triplicado y mal
+El escritorio de tawasuyu tenía el concepto de "launcher" **triplicado y mal
 delimitado**: `mirada-launcher-llimphi` (la barra), `shuma-shell-llimphi` (un
 chasis con tabs) y `shuma-module-launcher` (un módulo lista-de-apps) competían
 por el mismo rol sin una frontera clara. Correr cualquiera bajo el compositor
@@ -25,7 +27,7 @@ wawa.
 | **pata** | borde, repisa, andén | El **marco**: barras, paneles y dock declarados desde un archivo de config, con widgets colocables en cualquier slot. Hospeda el input de shuma. | No compone ventanas (eso es mirada) ni ejecuta comandos (eso es shuma). |
 
 Regla mnemónica: **mirada** pone las ventanas, **pata** pone el marco
-alrededor, **shuma** es la boca por la que le hablás al sistema.
+alrededor, **shuma** es la boca por la que le hablas al sistema.
 
 ## 2. Forma del dominio
 
@@ -70,19 +72,46 @@ en wawa el config llega por akasha.
 ## 4. Widgets builtin previstos
 
 `start_button` · `window_list` (ventanas abiertas, vía mirada-ctl/-link) ·
-`clipboard` · `volume` · `brightness` · `tray` · `clock` · medidores
-(`ram_meter`/`cpu_meter`) · **`astro`** (posición zodiacal del sol + ciclo
-lunar, reusando `cosmos-ephemeris`) · `shuma_input` (el cabezal del shell).
+`workspaces` (selector de escritorios virtuales, vía mirada-ctl) · `clipboard` ·
+`volume` · `brightness` · `network` (applet Wi-Fi/Ethernet) · `tray` · `clock` ·
+medidores (`ram_meter`/`cpu_meter`) ·
+**`astro`** (posición zodiacal del sol + ciclo lunar, reusando `cosmos-ephemeris`)
+· `shuma_input` (el cabezal del shell).
 
 Cada uno se coloca libremente: superficie + slot se eligen desde el config.
 
-## 5. Integración con shuma (el Quake)
+## 5. Integración con shuma (el Quake) — **hospedaje del shell real**
 
 El `shuma_input` es un widget que vive típicamente en una `Surface { kind: Bar,
-anchor: Bottom, autohide: true }`. Muestra el cabezal del shell; al recibir
-foco/escritura, el frontend **anima el despliegue** del resto de shuma sobre el
-escritorio (drawer estilo Quake) y lo repliega al soltar. El marco provee el
-borde; shuma provee el contenido.
+anchor: Bottom, autohide: true }`. Muestra el cabezal del shell; al activarlo
+(click o hotkey) el frontend **anima el despliegue** de shuma sobre el escritorio
+(drawer estilo Quake) y lo repliega al cerrar. El marco provee el borde; shuma
+provee el contenido — y "contenido" es, literalmente, **el shell real**.
+
+**pata no reimplementa el shell**: el drawer **monta el módulo
+`shuma-module-shell`** —el mismo de `shuma-shell-llimphi`— con su `State`,
+`update` y `view`. Es la Regla 2 en acción (la lógica de dominio no sabe quién la
+pinta) y la regla "un sustituto paralelo está prohibido". El cableado
+(`pata-llimphi/src/shuma.rs`):
+
+- `ShumaState::inner: shuma_module_shell::State` es el shell vivo (input, runs,
+  historial, cwd, PTY/TUI). pata nunca toca sus campos.
+- `drawer_overlay`/`drawer_body_view` montan `shuma_module_shell::view(&inner,
+  theme, Msg::ShumaShell)`. Todas las interacciones del shell vuelven envueltas
+  por ese `lift` como `Msg::ShumaShell(..)` y se reenvían a
+  `shuma_module_shell::update` — clicks en cards/etapas, scroll, selección del
+  cuerpo IDE-text, todo.
+- El teclado del drawer va al shell (`Msg::Key`); un latido ~100 ms drena su
+  salida (`Msg::Tick`). En layer-shell el teclado se normaliza de `Keysym` SCTK a
+  `llimphi_ui::KeyEvent` (`layer.rs::keysym_to_keyevent`). `Ctrl+Shift+Q` (o el
+  hotkey) repliega; el resto —Esc/Ctrl+C/flechas— lo ve el shell.
+
+Esto **reemplazó de un saque** las dos viejas reimplementaciones que pata tenía:
+las cards propias del path winit (`DrawerBlock`/`card_view`/`ejecutar`/`classify`)
+y el terminal PTY aparte del path layer-shell (`llimphi-module-shuma-term`). El
+módulo ya hace su propia detección PTY/TUI (vim/htop a pantalla completa), así que
+los superó a ambos. Evidencia del render: `cargo run -p shuma-module-shell
+--example dump_shell` (es el mismo `view` que pinta el drawer).
 
 ## 6. Estado y plan por fases
 
@@ -104,7 +133,7 @@ borde; shuma provee el contenido.
   sistema (chrono + `/proc/stat` + `/proc/meminfo` + `/sys/class/backlight`) en
   un `WidgetCtx`; `render` traduce cada `WidgetView` a `View<Msg>` (texto,
   medidor con barra, placeholder tenue) y coloca las superficies en los rects
-  que el layout resolvió (posición absoluta). `PataApp` (app-id `gioser.pata`)
+  que el layout resolvió (posición absoluta). `PataApp` (app-id `tawasuyu.pata`)
   carga config vía `pata-config`, `tick`ea a 1 Hz y pinta. Por ahora una sola
   ventana; mirada acopla por superficie en la Fase 8.
 - **Fase 6 (parcial)** — widgets nuevos:
@@ -120,37 +149,31 @@ borde; shuma provee el contenido.
     protocolo `wlr-foreign-toplevel-management` (el que usan waybar/eww), no por
     IPC de mirada. Ver el detalle en la Fase 8b. Bajo el compositor `mirada` (el
     path winit) sigue vacío hasta que mirada exponga sus toplevels.
-  - `tray` ⏳ — StatusNotifierItem; diferido. Placeholder por ahora.
+  - `tray` ✅ — StatusNotifierItem (watcher + host, ícono real). Detalle completo
+    en la Fase 8b (`tray.rs`).
 - **Fase 7 ✅** — despliegue Quake de shuma desde `shuma_input`. El frontend
   intercepta el kind `shuma_input` (es interacción, no pasa por el `build`
   agnóstico de core, igual que mirada con su shuma_bar): un cabezal clicable en
   la barra + hotkey (`keys`) despliegan un **drawer** animado (`llimphi-motion`,
   scrim que cierra al click + panel inferior que crece con el tween) que captura
-  el teclado. El estado vive en `Model::shuma`, no en core. La ejecución del
-  comando es, estrictamente, de `shuma`: mientras no haya puente, `shuma::
-  ejecutar_stand_in` corre por `sh -c` como **sustituto temporal** (patrón de
-  mirada) — se reemplaza sin tocar el mecanismo del drawer.
-  - **Puente real + cards (✅)** — el drawer corre por `shuma-exec` (no `sh -c`
-    pelado): historial de *cards* (`$ cmd` + etapas + salida + código), plegables,
-    con scroll. **Captura por etapa (tee, paridad con el shell de shuma):** un
-    pipe «simple» (sólo comandos/args/flags y `|`, sin comillas/variables/
-    redirecciones/globs/`~`) corre por `Exec::Direct` con `capture_stages`; cada
-    etapa **intermedia** emite su stdout en vivo (`StageStdout`) y se guarda en
-    `DrawerBlock::stage_lines`. Clickear la chip de una etapa intermedia **revela
-    su salida capturada inline** (sin re-ejecutar); la última etapa no se captura
-    aparte (su stdout es el cuerpo de la card). Cualquier otra sintaxis cae a
-    `sh -c` (sin tee). Detección en `shuma::simple_pipe_stages` (espeja
-    `shuma-module-shell`), testeada.
-  - **Submit a IA (✅, paridad con el quake de mirada-launcher)** — el buffer sin
-    prefijo va al **LLM** (`pluma-llm::from_env`, cae a Mock sin credenciales); el
-    prefijo `!`/`$` lo fuerza a shell. `shuma::classify` decide (`Empty`/`Shell`/
-    `Ia`, testeada); las consultas IA abren una card `✦ <prompt>` sin chips de
-    etapa que muestra `…pensando` y luego la respuesta. El resultado llega por el
-    mismo `ShumaResult`/`finish_last` que un comando. Es el último gap que tenía
-    `mirada-launcher-llimphi` sobre pata de cara a la Fase 10.
+  el teclado. El estado vive en `Model::shuma`, no en core.
+  - **Hospedaje del shell real (✅, 2026-06-05) — ver §5.** El drawer **monta el
+    módulo `shuma-module-shell`** (el mismo de `shuma-shell-llimphi`): cards,
+    etapas de pipe clickeables, cuerpo IDE-text, scroll, completado, grupos y
+    detección PTY/TUI. `ShumaState::inner` es ese `State`; el `view` se monta con
+    `lift = Msg::ShumaShell`, el teclado va por `Msg::Key` y un latido ~100 ms
+    drena por `Msg::Tick`. **Cero reimplementación** (Regla 2).
+  - **Histórico — superado.** Antes de hospedar, pata tenía **dos sustitutos
+    paralelos** que se eliminaron: (a) cards propias en el path winit
+    (`DrawerBlock`/`card_view`/`blocks_view`/`ejecutar`/`classify`/`preguntar_ia`,
+    que corrían por `shuma-exec`/`shuma-line` + IA por `pluma-llm`), y (b) un
+    terminal PTY aparte en el path layer-shell (`llimphi-module-shuma-term`). El
+    módulo real superó a ambos de un saque (ya hace su propio PTY/TUI), así que se
+    borraron junto con sus deps. Fue exactamente el anti-patrón "fabricar un
+    sustituto paralelo con el nombre del original" que prohíbe el CLAUDE.md.
 - **Fase 8 ✅** — `mirada-compositor` reconoce el marco `pata`:
   - Identidad: el viejo `SHELL_APP_ID = "carmen.shell"` → `is_shell_app_id`, que
-    matchea `gioser.pata` (la identidad que anuncia `pata-llimphi`) o el alias
+    matchea `tawasuyu.pata` (la identidad que anuncia `pata-llimphi`) o el alias
     legacy `carmen.shell`, override por `MIRADA_SHELL_APP_ID`.
   - Anclaje/grosor configurables (`MIRADA_SHELL_ANCHOR` / `MIRADA_SHELL_THICKNESS`,
     defaults bottom/40), ya no una franja fija de 40px al pie. Geometría en
@@ -194,9 +217,10 @@ borde; shuma provee el contenido.
     `OnDemand` → al abrir pasa a `Exclusive`). En vez de una segunda surface, la
     propia barra de shuma **crece hacia arriba** hasta `DRAWER_H` (su exclusive
     zone queda en el grosor de la barra, así no recoloca el teselado);
-    `render::shuma_open_view` pinta el cuerpo del drawer (input + salida) arriba
-    y el cabezal abajo. Teclado con foco: Esc cierra, Backspace, Enter ejecuta
-    (`shuma::ejecutar_stand_in`, `sh -c` bloqueante), texto → buffer.
+    `render::shuma_open_view` pinta el cuerpo del drawer —el **shell real**
+    hospedado (`shuma_module_shell::view`, ver §5)— arriba y el cabezal abajo.
+    Teclado con foco: se normaliza a `llimphi_ui::KeyEvent` y va al shell
+    (`Msg::Key`); `Ctrl+Shift+Q` repliega (la `W` es «cerrar pestaña», como en cualquier terminal).
   - **Clicks por hit-test** ✅ — cada panel guarda su árbol pintado
     (`RenderCache`: `Mounted` + `ComputedLayout`); al click, `hit_test_click`
     ubica el nodo bajo el puntero y dispara su `on_click` (vía `handle_msg`). El
@@ -257,10 +281,14 @@ borde; shuma provee el contenido.
   - **Fase 6 cerrada**: todos los widgets previstos (§4) existen, con íconos
     reales en el tray. **`clipboard` y `tray` cableados también en el path winit**
     (el `Model` muestrea el portapapeles cada tick y arranca el `TrayHandle` si la
-    config lo pide; `render::root` arma el `BarData` desde el `Model`). El único
-    pendiente es **`window_list` bajo el path winit/mirada**: necesita el cliente
-    foreign-toplevel (que vive en el backend layer-shell) o el IPC de toplevels de
-    mirada; hasta entonces queda vacío en ese path. Helper `config_tiene_widget`
+    config lo pide; `render::root` arma el `BarData` desde el `Model`).
+    **`window_list` bajo el path winit/mirada ✅** (verificado 2026-06-26): en vez
+    del cliente foreign-toplevel (que sólo existe en el backend layer-shell), el
+    path winit le pide la lista al WM por su CLI —igual que el switcher de
+    escritorios—: `sampler::sample_windows` lee `mirada-ctl windows --porcelain`
+    (gateado por `config_tiene_widget(window_list)`, un subproceso por tick sólo
+    si la barra lo declara) y `activate_window`/`close_window` actúan con
+    `mirada-ctl focus-window N` / `close-window N`. Helper `config_tiene_widget`
     compartido por ambos backends para arrancar el tray sólo si hace falta.
 - **Fase 8c — pulido de escritorio** (en curso):
   - **Gradiente en los medidores** ✅ — la barra de relleno de cpu/ram/volumen/
@@ -450,7 +478,7 @@ borde; shuma provee el contenido.
     apertura —es WM puro—; spawnear el proceso es la vía, como en
     `chasqui-explorer`.) Manifiestos de ejemplo de apps reales de la suite en
     `shared/app-bus/assets/apps/` (`media.toml` para video/audio, `nada.toml` para
-    texto/código); se copian a `~/.config/gioser/apps/`. La decisión de ruteo
+    texto/código); se copian a `~/.config/tawasuyu/apps/`. La decisión de ruteo
     (`open::handler_for`) es pura y testeada; el formato de manifiesto tiene
     canario en `app-bus`.
   - **11d-extra ✅** — menú "Abrir con…" para elegir el handler. El right-click
@@ -493,18 +521,18 @@ borde; shuma provee el contenido.
     pata: es control remoto del canvas de la app. El hit-test del pointer ya cae a
     `on_click_at`, que estos dientes usan.
   - **Integración cosmos** (opt-in `COSMOS_DELEGATE_SIDEBAR`): `app_id()=
-    "gioser.cosmos"`; publica sus `DockItem`s como dientes; `Msg::HostActivate`
+    "tawasuyu.cosmos"`; publica sus `DockItem`s como dientes; `Msg::HostActivate`
     togglea el panel correspondiente sobre su canvas; en modo delegado no pinta sus
     rails (`dock_rail_overlay`→None) y un panel aparece sólo si su lado está
     expandido → sin nada activo, puro canvas.
   - **Requisitos runtime**: pata corriendo en layer-shell con un sidebar en la
     config; cosmos lanzado con `COSMOS_DELEGATE_SIDEBAR=1`. Sin verificar headless.
   - **media y pluma también delegan** (reusan el mismo `pata-host`):
-    - **media** (`MEDIA_DELEGATE_SIDEBAR`, `app_id="gioser.media"`): dientes
+    - **media** (`MEDIA_DELEGATE_SIDEBAR`, `app_id="tawasuyu.media"`): dientes
       Config/Cola/Visualizadores/Ayuda; `Msg::HostActivate` despacha los Msgs de
       toggle existentes (Config/Cola/Ayuda son ventanas/overlay) o togglea el flag
       de visualizadores. media ya es canvas (no tiene rail propio que ocultar).
-    - **pluma** (`PLUMA_DELEGATE_SIDEBAR`, `app_id="gioser.pluma"`): dientes
+    - **pluma** (`PLUMA_DELEGATE_SIDEBAR`, `app_id="tawasuyu.pluma"`): dientes
       Documentos/LLM/Buscar/Diff. Cambio **aditivo**: en modo delegado las columnas
       laterales se vuelven colapsables (`side_izq_visible`/`side_der_visible`; cada
       lado oculto sale del árbol con su splitter) → editor a pantalla completa;
@@ -530,7 +558,270 @@ borde; shuma provee el contenido.
     glifo Group. Esto es la contraparte in-process de la delegación por socket:
     cruzar la frontera de proceso (app aparte) usa `pata-host`; embebido se cablea
     directo leyendo el `Model`.
-  - **Pendiente opcional**: re-registro de dientes al reordenar el dock (hoy se
-    registran una vez al init; el lado de activación se computa en vivo, así que el
-    drop entre lados sigue funcionando); estado "activo" del diente hospedado (hoy
-    siempre inactivo en pata, lo lleva la app).
+  - **Estado "activo" del diente hospedado ✅** (2026-06-26): antes los dientes
+    hospedados iban siempre inactivos en pata (el estado vive en la app). Ahora el
+    protocolo `pata-host` gana `AppMsg::SetActive{tooth: Option<u32>}` (app→shell):
+    la app reporta qué diente tiene desplegado (`Some(id)`) o que está en puro
+    lienzo (`None`); `HostServer` lo guarda por `app_id` y lo expone en `snapshot`
+    (ahora `(title, teeth, active)`), y `hosted_rail` resalta el diente que
+    coincide. `HostClient::set_active` es la API de la app. **shuma** ya lo adopta:
+    un único `sync_host_active` al cierre de su `update` empuja el índice de
+    `active_tool` en `Tool::ALL` (con guarda anti-redundancia, sin escribir el
+    socket en cada tick). Round-trip server↔client testeado (`tests/roundtrip.rs`)
+    + wire de `SetActive`. **media/pluma/cosmos también lo adoptan ✅**
+    (2026-06-26): cada una mapea su panel desplegado a un diente — cosmos el
+    `DockItem` del lado expandido, pluma su `diente_activo`, media el primero
+    abierto entre Config/Cola/Visualizadores/Ayuda (su modelo tiene varios toggles
+    independientes y el protocolo resalta uno solo).
+  - **Re-registro de dientes al reordenar el dock ✅** (2026-06-26): los dientes
+    de cosmos SON sus `DockItem`s; al moverlos (`dock_move`) la lista cambia y el
+    `Register` inicial quedaba viejo. `sync_host_teeth` (en cosmos) compara la
+    firma del dock con lo último publicado (`host_teeth_synced`) y re-emite con
+    `HostClient::update` sólo al cambiar. Las demás apps tienen dientes fijos
+    (shuma=`Tool::ALL`, pluma/media listas constantes), así que no lo necesitan.
+
+- **Fase 13 — barras embellecidas + widgets interactivos** (2026-06-05):
+  - **Apariencia configurable** (`pata-core`): `Surface` gana `opacity`
+    (fondo translúcido), `radius` (esquinas), `margin` (barra flotante; sólo
+    pincel, no cambia la reserva de franja), `gradient` (degradé vertical sutil)
+    y `cell` (cuantización de ancho); `General` gana `accent` (hex, tiñe el tema
+    en ambos backends). Espejo postcard-safe (`WireSurface`) al día. El render
+    aplica todo en `aplicar_apariencia`/`envolver_margen`/`bar_body` (compartido
+    winit + layer-shell).
+  - **Anchos cuantizados**: con `cell > 0` cada widget reserva un múltiplo de
+    `cell` px sobre el eje (`cuantizar` + `default_cells` por kind, override con
+    la prop `cells`) → el racimo de indicadores queda en grilla, no baila con los
+    dígitos.
+  - **Gradiente verde→rojo por medidor**: `meter_stops(kind)` da el par de
+    extremos (verde bajo → rojo alto) con un corrimiento de matiz propio por
+    widget (cpu/ram/volumen/brillo), y el gradiente abarca **toda** la barra (el
+    color indica el nivel). `SlotWidget::Core` ahora lleva `kind`+`cells`.
+  - **Volumen interactivo**: rueda ajusta el sink (`wpctl`/`pactl set-volume`
+    5%, tope 150%), click abre el mezclador (`exec`) o togglea mute, click
+    derecho togglea mute. **Brillo interactivo**: rueda ajusta la luminosidad
+    (`brightnessctl`/`light`, panel del portátil; DDC externo pendiente). Ambos
+    desacoplados; el medidor refleja en el próximo tick. El scroll/right-click ya
+    se rutean por hit-test genérico en ambos backends.
+  - **Clipboard con historial**: el frontend acumula las copias
+    (`push_clip_history`, tope 16, dedup); click izquierdo despliega un popup con
+    la lista (cada fila re-copia vía `wl-copy`), click derecho mantiene el
+    selector externo (`exec`/cliphist). winit por `view_overlay`; layer-shell
+    reusando el crecimiento de la barra del `start_button` vía `MenuKind`.
+  - **Clima** (`weather`): feed en hilo propio desde un servicio público
+    configurable (`wttr.in` por `curl`, ubicación por IP o `place`); dibujo a
+    mano del cielo (sol/nube/lluvia/nieve/tormenta/niebla) + temperatura;
+    `exec` al click. `SlotWidget::Weather`, dato del host en `BarData`.
+  - **CAVA** (`cava`): corre el binario `cava` en modo raw ascii desde un hilo;
+    barras con gradiente verde→rojo por altura; repaint ~20 Hz (winit
+    `spawn_periodic`, layer por el frame-callback continuo). Degrada en silencio
+    si `cava` no está. `SlotWidget::Cava`.
+  - **Reloj interactivo**: click abre un panel con spinners de fecha/hora +
+    Aplicar (apaga NTP y `timedatectl set-time` vía `pkexec`) + Sincronizar NTP.
+    `ClockDraft` (con wrap/clamp y `stamp`), `MenuKind::Clock`.
+  - **Estado runtime**: compila y `cargo check --workspace` verde; los tests
+    puros (parseo j1/cava, `ClockDraft`, historial) pasan. El render bajo Wayland
+    no se verifica headless (norma de pata) — validar en el compositor del
+    usuario.
+
+- **Fase 14 — workspace switcher (escritorios virtuales en la barra)** (2026-06-05):
+  - **El widget plano primero** (el rumbo elegido; lo espacial tipo Prezi y el
+    grafo quedan como capas siguientes, aditivas sobre esto). Una celda por
+    escritorio en la barra: la **activa** en acento, las **ocupadas** (con
+    ventanas) con realce de panel, las **vacías** tenues. Click en una celda →
+    salta a ese escritorio.
+  - **Desacople por CLI (Regla 2)**: pata **no** depende de mirada. Habla con el
+    WM por su CLI, igual que con `wpctl`/`pactl`/`wl-paste`: **lee** estado con
+    `mirada-ctl workspaces` y **cambia** con `mirada-ctl workspace N`. Backend
+    pluggable — bajo Hyprland el día de mañana son sólo otros dos comandos
+    (`hyprctl activeworkspace -j` / `hyprctl dispatch workspace N`). Sin un WM que
+    responda (`workspace_count == 0`), el widget **se oculta solo**.
+  - **mirada**: nueva consulta `CtlRequest::Workspaces` →
+    `CtlReply::Workspaces(WorkspacesState{ active, loads })` (en `mirada-brain`,
+    derivada de `Desktop::active_index` + `workspace_loads`). La atienden los tres
+    front-ends del ctl (compositor, app `mirada`, ejemplo headless). `mirada-ctl
+    workspaces` imprime una línea estable parseable: `active=2 count=9
+    loads=1,0,3,…`.
+  - **pata-core**: `WidgetCtx` gana `active_workspace`/`workspace_count`/
+    `workspace_occupied` (máscara de 16 bits, no_std, `Copy`); `WidgetView::
+    Workspaces{active,count,occupied}`; widget `WorkspaceSwitcher` (kinds
+    `workspaces` | `workspace_switcher`). El host muestrea el estado; el core sólo
+    lo transcribe a view-model.
+  - **pata-llimphi**: `sampler::sample_workspaces` (parser con test de ida y
+    vuelta) llena el ctx; `switch_workspace` lanza el cambio (desacoplado);
+    `workspaces_view`/`workspace_cell` pintan la fila de celdas clickeables
+    (`Msg::SwitchWorkspace`) respetando gap y dirección del slot — sin pasar por
+    el wrapping de un widget simple, cada celda trae su interacción.
+  - **wawa**: el kernel framebuffer (`pata_marco.rs`) pinta el view-model
+    (display, sin click — el launcher aún no provee estado, así que con `count=0`
+    queda oculto). Compila en `x86_64-unknown-none`.
+  - **Evidencia**: el inspector `pata --widgets` materializa el widget desde la
+    config y muestra su view-model (`workspaces 2/4 ocupados=0b101`). Tests puros
+    verdes (transcripción del estado + parser de la línea de mirada-ctl). El
+    render bajo Wayland no se verifica headless (norma de pata).
+  - **Latencia — optimistic-update ✅** (2026-06-26): al clickear una celda, el
+    realce salta al destino **en el acto**, sin esperar el muestreo de ~1 s. Se
+    sostiene unos ticks (`OPTIMISTIC_TICKS = 3`) por si un sample tomado *antes*
+    de que el WM aplicara el salto reportara el escritorio viejo y parpadeara; se
+    suelta al confirmarse el destino (o al agotarse el presupuesto, si el salto no
+    prosperó). La lógica vive en `sampler::reconcile_optimistic` —función pura,
+    testeada ×3— y la consumen **ambos** backends (winit en `lib.rs`, layer-shell
+    en `layer/app_impl.rs::maybe_sample`), cada uno con su `pending_ws`. El
+    refresco sub-segundo queda como pulido adicional si molesta.
+  - **Pendiente (capas siguientes, ya decididas con el usuario)**: overlay
+    **espacial tipo Prezi** (zoom-out a todos los escritorios con miniaturas,
+    cámara de `pluma-deck` Recorrido) y, más adelante, vista **grafo** (escritorios
+    como nodos de un DAG, `llimphi-widget-nodegraph`). Ambas leen el mismo estado
+    que este widget plano.
+
+- **Fase 15 — applet de red (`network`)** (2026-06-26):
+  - **El widget** (`network`/`wifi`): un icono de **nivel de señal** dibujado a
+    mano (cuatro barras ascendentes estilo celular, las encendidas en acento) que
+    refleja el estado: Wi-Fi (con SSID corto al lado), Ethernet (icono de cable),
+    radio apagada o sin conexión (barras tenues + tachado). Click → popup.
+  - **Dato del host** (`network.rs`): como el clima/tray, corre en su **propio
+    hilo** y publica la última lectura por un canal; el frontend la drena por tick
+    y la pasa al render en `BarData` (no es view-model de core). La fuente es
+    **`nmcli`** (NetworkManager) en modo terse, invocado con tope de tiempo (la red
+    puede colgar), sin sumar un cliente D-Bus al árbol — mismo patrón defensivo que
+    `weather` con `curl`. Si nmcli no está, el estado cae a `Sin` (icono tenue) sin
+    romper la barra. Refresco cada ~5 s (15 s si nmcli no responde).
+  - **Popup**: switch de la radio Wi-Fi + lista de las redes visibles (señal +
+    SSID + candado si es segura, la activa resaltada con ✓). Click en una red →
+    `nmcli device wifi connect`; click en la activa → `nmcli connection down`.
+    En winit es un `network_overlay` (scrim + panel, como el control panel); en
+    layer-shell es un `MenuKind::Network` (la barra crece hacia abajo, anclado bajo
+    el icono, como el clipboard/control). Complementa el toggle Wi-Fi del Control
+    panel (Fase 13): aquel es el switch rápido, este es el applet con selector.
+  - **Parsers puros y testeados** (`parse_wifi_list`/`parse_radio`/
+    `parse_ethernet_connected`/`derive_status`, con un splitter que respeta el
+    escape `\:` de nmcli para SSID con dos puntos): 5 tests verdes. El render bajo
+    Wayland no se verifica headless (norma de pata) — validar en el compositor.
+  - **Pendiente**: **entrada de contraseña** para una red segura nueva (necesita
+    un campo de texto con foco de teclado, como el menú de inicio); hoy una red sin
+    perfil guardado depende del agente de secretos del sistema (nm-applet/polkit).
+    Bluetooth con selector de dispositivos sigue siendo el gemelo natural (hoy sólo
+    el toggle rfkill del Control panel).
+
+- **Fase 16 — cierre de escritorio** (2026-06-26): los huecos que faltaban para
+  que pata sea un DE completo, en bloques.
+  - **Mezclador de volumen por app (el "vapucontrol" nativo) ✅** — la ventanita
+    de volumen deja de ser sólo el slider del sink por defecto: debajo lista una
+    fila por **corriente de audio de aplicación** (sink-input) con su nombre,
+    slider horizontal y botón mute. La data la lee `sampler::sample_sink_inputs`
+    (`pactl list sink-inputs`, que también provee pipewire-pulse), parseada por
+    `parse_sink_inputs` (índice + `Mute:` + primer `Volume:` % + `application.name`
+    con respaldo a media/binario) —función pura, 2 tests—; se ajusta con
+    `set-sink-input-volume`/`-mute` por índice. Se muestrea al abrir el popup y
+    cada tick mientras está abierto (sliders en vivo). El **click izquierdo del
+    medidor de volumen** ahora abre este popup nativo en **ambos** backends (antes
+    el layer-shell lanzaba `pavucontrol` externo y el winit dependía del `exec`);
+    se quitó el `exec = "pavucontrol"` del asset. En layer-shell es un
+    `MenuKind::Volume` (la barra crece bajo el medidor); en winit, el
+    `volume_overlay` de siempre, ahora con la sección de apps.
+  - **Menú de sesión/energía ✅** — el widget `session`/`power` (símbolo de power
+    pintado a mano) abre un menú con **Bloquear / Suspender / Reiniciar / Apagar /
+    Cerrar sesión**. Cierra el TODO que el propio SDD marcaba ("logout real
+    pendiente", Fase 7). Cada acción es un comando de sistema (Regla 2, como
+    nmcli/wpctl): lock=`loginctl lock-session`, suspend/reboot/poweroff=`systemctl`,
+    y **logout=`mirada-ctl logout`** (mirada hace su FUS logout: cierra ventanas +
+    relevo) con respaldo a `loginctl terminate-user`. Las acciones disruptivas
+    (reiniciar/apagar/logout) piden **confirmación inline** (`SessionAction::
+    needs_confirm`): la fila se reemplaza por «¿Apagar? / Confirmar / Cancelar».
+    `render/session.rs` con `session_view`/`session_panel`/`session_overlay`;
+    en layer-shell `MenuKind::Session` + `session_menu_view`. La lógica
+    (etiquetas/comandos/confirmación) vive en `SessionAction` en `lib.rs`.
+  - **Controles de reproducción (MPRIS) ✅** — el widget `mpris`/`media_player`:
+    botones **prev / play-pause / next** (íconos de transporte pintados a mano —
+    DejaVu no trae los glifos a color) + el **título** de la pista. Dato del host
+    en su propio hilo vía `playerctl` (`mpris.rs`, patrón clima/red), refresco
+    ~1.5 s; se **oculta** si no hay reproductor (como el workspace switcher con
+    count 0). Sin popup: los clics mandan los comandos de transporte directo en
+    ambos backends. `parse_status` pura y testeada. `render/media.rs`.
+  - **OSD (cartel de volumen/brillo) ✅** — al ajustar volumen o brillo aparece
+    un cartel transitorio (ícono + barra de nivel) que se desvanece solo (~1.3 s).
+    `render/osd.rs`: `Osd::flash`/`expired` (temporizado con `Instant`) + dibujo
+    a mano del altavoz/sol. **Disparo** desde las interacciones que pata conoce
+    (rueda/slider/mute), con el valor optimista (las teclas multimedia globales
+    las maneja el compositor, no pata — Regla 2; quedan fuera). En **winit** es un
+    overlay de prioridad baja (sólo cuando no hay menú abierto). En **layer-shell**
+    es una **surface `Overlay` dedicada** anclada abajo (como el tooltip): arranca
+    1×1 y crece al dispararse. Como una surface 1×1 ociosa podría no recibir frames
+    propios, las barras —que laten en continuo— **empujan** su draw. Runtime sin
+    verificar headless (norma de pata). De paso se reparó un example stale
+    (`rail_dientes_shot`, firma de `sidebar_surface_view` desactualizada).
+  - **Contraseña Wi-Fi en el applet ✅** — clic en una red **segura** del popup ya
+    no intenta conectar a ciegas: abre un **campo de contraseña** dentro del mismo
+    popup (puntos enmascarados, Conectar/Cancelar). Conecta con
+    `nmcli device wifi connect <ssid> password <pw>` (la contraseña va por
+    argumentos al subproceso, sin quoting de shell); con el campo **vacío** cae al
+    perfil guardado / agente de secretos. El campo **captura el teclado**: en
+    layer-shell se concede foco `Exclusive` al panel del menú (`set_menu_keyboard`,
+    como el buscador del menú de inicio) y `press_key` rutea al buffer; en winit lo
+    hace `on_key`. Cierra el último pendiente de la Fase 15. Con esto el **applet de
+    red queda completo** (conectar a redes nuevas seguras sin depender del agente).
+  - **Applet de Bluetooth ✅** — el gemelo del de red: widget `bluetooth`/`bt`
+    (runa de BT pintada a mano; acento si hay conexión, tenue/tachada si apagado)
+    que abre un popup con el **switch del controlador** + la lista de **dispositivos
+    emparejados** (la conectada con ✓), click → conectar/desconectar. Dato del host
+    en su hilo vía `bluetoothctl` (`bluetooth.rs`, patrón red). Parsers puros
+    (`parse_powered`/`parse_devices`/`parse_connected`/`build_devices`): 2 tests.
+    winit por overlay, layer-shell por `MenuKind::Bluetooth`. Complementa el toggle
+    rfkill del Control panel (aquel es el switch rápido, este el applet con lista).
+    El **emparejamiento** de un dispositivo nuevo (scan + PIN) queda fuera (flujo
+    de una sola vez con `bluetoothctl`).
+  - **Agente polkit ✅** — pata registra un **agente de autenticación**
+    `org.freedesktop.PolicyKit1.AuthenticationAgent`: cuando una acción
+    privilegiada lo pide (el reloj ya usa `pkexec`; también red/energía), aparece
+    un diálogo modal con el mensaje de polkit y un campo de contraseña. `polkit.rs`
+    corre en su **propio hilo** con runtime tokio (zbus, como `tray.rs`): registra
+    el agente para la sesión (`unix-session` con `XDG_SESSION_ID`) en el **bus de
+    sistema**; en `BeginAuthentication` manda un `PolkitRequest` al bucle de UI por
+    un canal (con un `oneshot` para la respuesta) y espera. La UI muestra el
+    diálogo (reusa el campo con foco de teclado del applet de red; modal, prioridad
+    máxima en winit y `MenuKind::Polkit` en layer-shell). Con la contraseña, el
+    agente corre el helper setuid `polkit-agent-helper-1` (rutas por distro),
+    hablando su protocolo PAM por stdin/stdout —la contraseña va por el stdin del
+    helper, **nunca por la shell ni el log**—; `clasificar_linea` (pura, testeada)
+    distingue prompt/SUCCESS/FAILURE. Se registra siempre (pata es el shell de la
+    sesión); si ya hay otro agente, el registro falla y se loguea. Una
+    autenticación a la vez; `CancelAuthentication` deja caer el `oneshot`. Runtime
+    sin verificar headless (norma de pata).
+  - **Campanita de notificaciones + No-molestar ✅** — el daemon `pata-notify`
+    (toast + historial sled + triage) ya existía pero **la barra no lo exponía**.
+    Ahora el widget `notifications`/`notify`: una campana (con un punto de acento
+    si hay historial, tachada en «no molestar») que abre un popup con el switch de
+    **no-molestar**, las últimas notificaciones (app + título) y acciones
+    (**Limpiar** / **Abrir panel** → lanza `pata-notify-panel`). Habla con el
+    daemon por **D-Bus** (`net.tawasuyu.Notificaciones1`), no por su crate —igual
+    que con nmcli/bluetoothctl por CLI—: `notifications.rs` corre en su hilo con
+    tokio/zbus (patrón `tray.rs`), proxy inline, foto por `Arc<Mutex>` + comandos
+    por canal; parsea el historial JSON con `serde_json::Value` (sin derive).
+    **No-molestar** se sumó al daemon: un `Arc<AtomicBool>` compartido entre el
+    `Servicio` (la `Notify` lo persiste igual pero no dispara el toast) y el
+    `Historiador` (`Dnd`/`SetDnd` nuevos en la interfaz + el proxy). `construir`
+    puro y testeado. winit por overlay, layer-shell por `MenuKind::Notifications`.
+  - **Calendario en el reloj ✅** — el popup del reloj (que ya fijaba fecha/hora)
+    ahora abre con un **calendario del mes** arriba: grilla de 7 columnas
+    (lunes-primero) con el día de hoy resaltado en acento, sobre el setter de
+    fecha/hora. Sólo muestra (el setter de abajo edita el reloj del sistema).
+    Aritmética pura y testeada: `dias_del_mes` (con bisiesto) y `columna_lunes`
+    (Sakamoto reordenado a lunes-primero), 2 tests. Es el clásico «click en el
+    reloj → calendario» de cualquier panel.
+  - **Quick settings: perfiles de energía + luz nocturna ✅** — el Control panel
+    suma un selector segmentado de **perfil de energía** (Ahorro/Equilibrado/
+    Rendimiento, vía `powerprofilesctl`; sólo aparece si hay power-profiles-daemon)
+    y un switch de **luz nocturna** (arranca/mata `wlsunset`). `ControlExtras` lee
+    `powerprofilesctl get` + `pgrep wlsunset` al abrir. **Bonus/fix:** los toggles
+    Wi-Fi/Bluetooth del Control panel **ahora funcionan en el layer-shell** —antes
+    caían al `_ => {}` del backend de producción (sólo andaban en winit). Los cuatro
+    (`ControlWifi`/`ControlBt`/`ControlPowerProfile`/`ControlNight`) cableados en
+    ambos backends.
+  - **Aviso de batería baja ✅** — pata lee `/sys/class/power_supply` cada tick y,
+    al **cruzar** un umbral descargando (15% bajo, 5% crítico), emite una
+    notificación (`notify-send`, que recibe el propio daemon). No repite hasta
+    recuperarse o enchufar. La decisión es pura y testeada (`bateria::decidir`,
+    3 tests); ambos backends la corren en su muestreo. Clásico de portátil (pata es
+    el lugar natural: lee la batería y siempre corre).
+    - **Con esto cierran los huecos de DE que faltaban en pata.** Quedan en órbita
+      de **mirada** (compositor, no pata): lock screen + gestión de idle (en curso
+      ahí), screenshot/grabación y configuración de displays.
